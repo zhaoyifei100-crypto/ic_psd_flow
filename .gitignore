@@ -1,0 +1,7 @@
+
+ic_psd2/models/*
+ic_psd2/.chip-builder/*
+ic_psd2/output/*
+ic_psd2/scripts/__pycache__
+
+ic_psd3/src/__pycache__
