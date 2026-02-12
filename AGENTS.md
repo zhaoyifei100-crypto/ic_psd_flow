@@ -1,220 +1,188 @@
-# AGENTS.md - IC PSD Flow Repository
+# AGENTS.md - Coding Guidelines for AI Agents
 
-This repository contains tools for IC (Integrated Circuit) Product Stage Definition (PSD) workflow - similar to IPD Stage-Gate management for semiconductor development.
+This document provides guidelines for AI coding agents working in this IC/PSD validation project repository.
 
-- **PSD2 (ic_psd2)**: Development Phase - Chip XML Builder for register map generation
-- **PSD3 (ic_psd3)**: Qualification Phase - Hardware drivers and test automation
+## Project Overview
 
-## Build Commands
+This is a chip validation workflow repository containing:
+- **ic_psd2/**: Chip XML Builder - generates chip-level XML register definitions
+- **ic_psd3/**: Hardware bridge library and test automation framework
+  - `hw_bridge/`: I2C hardware abstraction layer
+  - `lab_instruments/`: Laboratory instrument management
+  - `psd_bridge/`: PSD2-to-PSD3 bridge utilities
 
+## Build / Test / Lint Commands
+
+### Python Environment
 ```bash
-# Install dependencies
 pip install -r requirements.txt
-
-# For ic_psd2 - Chip XML Builder
-python ic_psd2/scripts/chip_cli.py init --chip-name <NAME> --modules-dir <DIR>
-python ic_psd2/scripts/chip_cli.py check
-python ic_psd2/scripts/chip_cli.py build
-python ic_psd2/scripts/chip_cli.py export --format json
-
-# Direct builder usage
-python ic_psd2/src/chip_builder.py <config.yaml> [output_dir]
+cd ic_psd3/src/hw_bridge && pip install -e .
 ```
 
-## Test Commands
-
-**No formal test framework configured.** Run manual tests:
-
+### Code Quality Tools (configured in pyproject.toml)
 ```bash
-# Test XML parser
-python ic_psd3/src/xml_parser.py
-
-# Test FTDI driver (requires hardware)
-python ic_psd3/src/drv_ftdi.py
-
-# Test PI driver (requires Raspberry Pi)
-python ic_psd3/src/drv_pi.py
+black ic_psd3/src/           # Format code (line length: 100)
+flake8 ic_psd3/src/          # Lint (max line length: 100)
+pytest                       # Run all tests
+pytest path/to/test.py       # Run single test file
+pytest path/to/test.py::test_func  # Run single test function
+pytest -v                    # Verbose output
 ```
 
-## Lint Commands
-
-**No linting configured.** Recommended setup:
-
+### Chip XML Builder Commands (ic_psd2)
 ```bash
-# Install linting tools
-pip install flake8 black isort mypy
-
-# Run linting (manual)
-flake8 ic_psd2/ ic_psd3/
-black --check ic_psd2/ ic_psd3/
-isort --check ic_psd2/ ic_psd3/
+cd ic_psd2/scripts
+python skill_helper.py state
+python skill_helper.py init <chip_name> <modules_dir> [output_dir]
+python skill_helper.py check
+python skill_helper.py build
+python chip_cli.py status
 ```
 
 ## Code Style Guidelines
 
-### Python Style
+### Python Version
+- Target Python 3.7+ compatibility
 
-- **Python Version**: Python 3.7+
+### Formatting
+- **Line length**: 100 characters (configured in pyproject.toml)
+- Use **Black** for formatting, **Flake8** for linting
 - **Indentation**: 4 spaces (no tabs)
-- **Line Length**: 100 characters max
-- **Quotes**: Double quotes for docstrings, single for strings
+- Use trailing commas in multi-line collections
 
-### Naming Conventions
-
-| Type | Convention | Example |
-|------|------------|---------|
-| Classes | PascalCase | `ChipXMLBuilder`, `DrvFTDI` |
-| Functions | snake_case | `load_config()`, `write_reg()` |
-| Variables | snake_case | `base_addr`, `chip_info` |
-| Constants | UPPER_CASE | `FT_OK`, `I2C_TRANSFER_OPTIONS_START_BIT` |
-| Private | _leading_underscore | `_parse_mask()`, `_built_tree` |
-
-### Import Order
+### Imports
+Order imports in 3 groups with blank lines:
+1. Standard library
+2. Third-party
+3. Local/application imports (use relative imports within same package)
 
 ```python
-# 1. Standard library
-import os
-import sys
-import json
-from pathlib import Path
-from dataclasses import dataclass
+import atexit
+from typing import Dict, List, Optional
 
-# 2. Third-party
-from openpyxl import Workbook
-import yaml  # optional
+import yaml
 
-# 3. Local modules
-from scripts.skill_helper import get_state
+from .interfaces import IDevice
+from ..drivers.mock_driver import MockDriver
 ```
 
 ### Type Hints
+- Use for all function parameters and return values
+- Import from `typing`: `Dict`, `List`, `Optional`, `Any`, `Union`
+- Use string literals for forward references: `-> "DeviceManager"`
 
-Use type hints for function signatures:
-
-```python
-def load_config(self, config_path: str) -> None:
-    ...
-
-def add_instance(
-    self,
-    name: str,
-    module_name: str,
-    base_addr: int,
-    instance_id: int = 0,
-) -> "ChipXMLBuilder":
-    ...
-```
+### Naming Conventions
+- **Classes**: PascalCase (`DeviceManager`, `MockDriver`)
+- **Functions/Methods**: snake_case (`write_reg`, `read_bits`)
+- **Variables**: snake_case (`chip_addr`, `write_log`)
+- **Constants**: UPPER_CASE (`TYPE_MAP`, `MAX_RETRIES`)
+- **Private attributes**: leading underscore (`_is_open`, `_cleanup`)
+- **Abstract base classes**: Prefix with `I` (`IDevice`)
 
 ### Docstrings
-
-Use Google-style docstrings:
+Use Google-style docstrings with:
+- One-line summary
+- `Args:`, `Returns:`, `Raises:`, `Examples:` sections
 
 ```python
-def build(self) -> ET.Element:
-    """
-    Execute build process.
+def write_bits(self, addr1: int, addr2: int, lsb: int, bits: int, value: int) -> None:
+    """Write specific bits to a register.
 
-    Returns:
-        Root XML Element.
+    Args:
+        addr1: Page address / high byte (8-bit)
+        addr2: Offset address / low byte (8-bit)
+        lsb: Least significant bit position (0-7)
+        bits: Number of bits to write (1-8)
+        value: Value to write
 
     Raises:
-        ValueError: If configuration is invalid.
-        RuntimeError: If build fails.
+        RuntimeError: If write operation fails
+        ValueError: If bit parameters are invalid
+
+    Examples:
+        >>> device.write_bits(0x26, 0x01, lsb=2, bits=4, value=0x0A)
     """
 ```
 
 ### Error Handling
+- Use specific exceptions: `ValueError`, `RuntimeError`, `KeyError`
+- Provide descriptive error messages
+- Use try/except with minimal scope
+- Clean up resources in `finally` blocks or use context managers
 
 ```python
-# Raise specific exceptions
-if not os.path.exists(xml_path):
-    raise FileNotFoundError(f"Module XML not found: {xml_path}")
-
-# RuntimeError for execution failures
-if status != FT_OK:
-    raise RuntimeError(f"I2C write failed: {status}")
-
-# Try-except with context
 try:
-    builder.load_config(config_path)
-except ImportError as e:
-    raise ImportError("Install PyYAML: pip install pyyaml") from e
+    device = create_device(driver_type, **kwargs)
+    device.open()
+except Exception as e:
+    raise RuntimeError(f"Failed to open device: {e}")
 ```
 
-### File Structure
+### Class Design
+- Use abstract base classes (ABC) for interfaces
+- Implement context managers (`__enter__`, `__exit__`)
+- Use properties for read-only attributes (`@property`)
+- Use class methods for factory patterns (`@classmethod`)
 
 ```python
-#!/usr/bin/env python3
-"""
-Module short description.
+class IDevice(ABC):
+    @abstractmethod
+    def open(self) -> None:
+        pass
 
-Longer description here.
+    def __enter__(self):
+        self.open()
+        return self
 
-Author: name
-Date: YYYY-MM-DD
-"""
-
-# Imports
-# ...
-
-# Constants
-# ...
-
-# Classes/Functions
-# ...
-
-if __name__ == "__main__":
-    # CLI or test code
-    pass
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        return False
 ```
 
-### Chinese Comments
+### Architecture Patterns
+- **Factory Pattern**: Creating driver instances
+- **Manager Pattern**: Centralized resource management
+- **Interface Pattern**: Abstract base classes defining contracts
+- **Configuration-Driven**: Support YAML/JSON configuration files
 
-Comments can be in Chinese for this codebase (business requirement), but:
-- Keep technical terms in English (e.g., "XML parser", "I2C driver")
-- Use docstrings for public API documentation
-- Variable/function names must be English
+### File Organization
+- One class per file (generally)
+- Group related classes in packages
+- Use `__init__.py` to expose public API
+- Place tests in `tests/` directory mirroring source structure
 
-## Project Structure
+### Comments
+- Use comments sparingly - prefer self-documenting code
+- Comment the "why", not the "what"
 
-```
-ic_psd2/                    # Development Phase - XML Builder
-├── src/
-│   └── chip_builder.py     # Main ChipXMLBuilder class
-├── scripts/
-│   ├── chip_cli.py         # CLI interface
-│   └── skill_helper.py     # Skill automation helper
-├── .chip-builder/
-│   └── config.yaml         # Builder configuration
-└── models/                 # Module XML files
+### Git Workflow
+- Write descriptive commit messages
+- Do not commit without explicit user request
+- Never commit secrets, credentials, or sensitive data
+- Keep `.gitignore` updated
 
-ic_psd3/                    # Qualification Phase - Test & Drivers
-├── src/
-│   ├── drv_ftdi.py         # FTDI I2C driver (Windows)
-│   ├── drv_pi.py           # Raspberry Pi I2C driver (Linux)
-│   ├── xml_parser.py       # XML parser utilities
-│   └── auto_py_script.py   # Test script generator
-└── README.md               # Detailed workflow documentation
-```
+## Testing
 
-## Key Dependencies
+- Use pytest for all tests
+- Test file naming: `test_*.py` or `*_test.py`
+- Test function naming: `test_<function>_<scenario>()`
+- Use mock drivers for hardware-independent tests
+- Test both success and error paths
 
-- `openpyxl>=3.0.0` - Excel file handling
-- `pyyaml` - YAML config parsing (optional)
-- `ctypes` - FTDI DLL interface (Windows)
+## Language Support
 
-## Hardware Notes
+- **Code**: Use English (variables, functions, comments)
+- **Documentation**: Can use Chinese for user-facing docs
+- **Commit messages**: Prefer English
 
-- **FTDI Driver**: Windows only, requires `libMPSSE.dll`
-- **PI Driver**: Linux only, requires `i2ctransfer` tool
-- Default I2C address: `0xB0` (GS Coolink chips)
+## Key Project-Specific Conventions
 
-## Common Tasks
+1. **Hardware Bridge**: All drivers must implement `IDevice` interface
+2. **I2C Addressing**: Use 16-bit format `(addr1, addr2)` - high byte + low byte
+3. **Register Operations**: Provide `read_reg`, `write_reg`, `read_bits`, `write_bits`
+4. **Instrument Manager**: Use configuration-driven instantiation via YAML
+5. **XML Builder**: State-driven workflow (empty → init → ready → done)
 
-```bash
-# Generate chip XML from modules
-python ic_psd2/src/chip_builder.py config.yaml ./output
+---
 
-# Parse XML to generate Python register definitions
-python -c "from ic_psd3.src.xml_parser import XMLParser; p = XMLParser('file.xml'); p.get_regdefing_py()"
-```
+*Last updated: 2026-02-12*

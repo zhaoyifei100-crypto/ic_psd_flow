@@ -34,10 +34,12 @@ ic_psd3/
 │   └── utils/                   # 工具函数
 │       └── data_logger.py       # [TODO] 数据记录器
 │
+├── import      #PSD2 import files
+│    ├── GSU1K1_NTO.xml      # chip xml file
+    ├── gsu1001_2025_nto_scripts.txt        #AVES scripts write only
+
+
 ├── library/                     # 测试库层（Common Functions）
-│       ├── import      #PSD2 import files
-│           ├── GSU1K1_NTO.xml      # chip xml file
-│           ├── gsu1001_2025_nto_scripts.txt        #AVES scripts write only
 │       ├── aves_class.py       # auto gen from AVES scripts
 │       ├── usb_common_class.py       # usb公用的common class
                                         # 这个文件应该要统一管理，TODO
