@@ -540,20 +540,92 @@ class AutoClassGenerator:
 
         return output_path
 
+    # ==================== 功能 3: 生成寄存器定义文件 ====================
+
+    def generate_reg_define(self, output_path: Optional[str] = None) -> str:
+        """
+        生成 reg_define.py 文件，包含所有 PAGE 的地址定义
+
+        从 XML 中提取 IIC memory 的 pagename 和地址，生成 Python 常量定义文件。
+        格式：PAGE_NAME = 0xADDRESS
+
+        Args:
+            output_path: 输出文件路径，默认 library/reg_define.py
+
+        Returns:
+            生成的文件路径
+        """
+        if output_path is None:
+            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+            output_path = os.path.join(base_dir, "library", "reg_define.py")
+
+        # 确保目录存在
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+        with open(output_path, "w", encoding="utf-8") as f:
+            # 文件头
+            f.write('"""\n')
+            f.write("Register Definition Constants\n")
+            f.write("Generated from: {}\n".format(os.path.basename(self.xml_file)))
+            f.write("=====================================\n\n")
+            f.write("This file defines I2C memory page addresses extracted from XML.\n")
+            f.write("Use these constants to access chip registers.\n\n")
+            f.write("Example:\n")
+            f.write("    from library.reg_define import *\n")
+            f.write("    device.read_reg(AG, 0x00)  # Read from AG page\n")
+            f.write('"""\n\n')
+
+            # 按页面名称排序生成定义
+            sorted_pages = sorted(self.dev_addr_dict.items())
+
+            if sorted_pages:
+                f.write("# I2C Memory Page Addresses\n")
+                for page_name, page_address in sorted_pages:
+                    f.write(f"{page_name} = {page_address}\n")
+                f.write("\n")
+
+                # 添加字典映射便于查询
+                f.write("# Page Name to Address Mapping\n")
+                f.write("PAGE_MAP = {\n")
+                for page_name, page_address in sorted_pages:
+                    f.write(f'    "{page_name}": {page_address},\n')
+                f.write("}\n\n")
+
+                # 添加反向映射（地址到名称）
+                f.write("# Address to Page Name Mapping\n")
+                f.write("ADDR_MAP = {\n")
+                for page_name, page_address in sorted_pages:
+                    f.write(f'    {page_address}: "{page_name}",\n')
+                f.write("}\n\n")
+
+                # 统计信息和导出清单
+                f.write(f"# Total Pages: {len(sorted_pages)}\n")
+                all_exports = sorted([page_name for page_name, _ in sorted_pages])
+                all_exports.extend(["PAGE_MAP", "ADDR_MAP"])
+                f.write(f"__all__ = {all_exports}\n")
+
+        print(f"✓ Register definitions generated: {output_path}")
+        print(f"  Total pages: {len(sorted_pages)}")
+        return output_path
+
     # ==================== 便捷方法 ====================
 
     def generate_all(
-        self, auto_class_path: Optional[str] = None, target_file: Optional[str] = None
-    ) -> Tuple[str, Optional[str]]:
+        self,
+        auto_class_path: Optional[str] = None,
+        target_file: Optional[str] = None,
+        reg_define_path: Optional[str] = None,
+    ) -> Tuple[str, Optional[str], Optional[str]]:
         """
-        一键生成 AutoClass 并替换目标文件
+        一键生成 AutoClass、reg_define 并替换目标文件
 
         Args:
             auto_class_path: auto_class.py 输出路径
             target_file: 需要替换的文件路径
+            reg_define_path: reg_define.py 输出路径
 
         Returns:
-            (auto_class_path, replaced_file_path)
+            (auto_class_path, replaced_file_path, reg_define_path)
         """
         auto_path = self.generate_auto_class(auto_class_path)
 
@@ -561,7 +633,11 @@ class AutoClassGenerator:
         if target_file is not None and os.path.exists(target_file):
             replaced_path = self.replace_autoclass_calls(target_file)
 
-        return (auto_path, replaced_path)
+        reg_define_file = None
+        if reg_define_path is not None:
+            reg_define_file = self.generate_reg_define(reg_define_path)
+
+        return (auto_path, replaced_path, reg_define_file)
 
 
 # ==================== 命令行接口 ====================
@@ -571,14 +647,25 @@ if __name__ == "__main__":
 
     if len(sys.argv) < 2:
         print("Usage:")
-        print("  python unified_generator.py <xml_file> [--replace <target_file>]")
+        print("  python unified_generator.py <xml_file>")
+        print("                                [--replace <target_file>]")
+        print("                                [--reg-define [output_path]]")
+        print("")
+        print("Options:")
+        print("  --replace <file>      Replace AutoClass calls in target file")
+        print("  --reg-define [path]   Generate reg_define.py with page addresses")
         print("")
         print("Examples:")
         print("  # Generate auto_class.py only")
         print("  python unified_generator.py GSU1K1_NTO.xml")
         print("")
-        print("  # Generate and replace")
-        print("  python unified_generator.py GSU1K1_NTO.xml --replace my_script.py")
+        print("  # Generate auto_class.py and reg_define.py")
+        print("  python unified_generator.py GSU1K1_NTO.xml --reg-define")
+        print("")
+        print("  # Generate with custom output paths")
+        print("  python unified_generator.py GSU1K1_NTO.xml \\")
+        print("    --reg-define library/my_reg_define.py \\")
+        print("    --replace my_script.py")
         sys.exit(1)
 
     xml_file = sys.argv[1]
@@ -590,15 +677,24 @@ if __name__ == "__main__":
     # 创建生成器
     generator = AutoClassGenerator(xml_file)
 
+    # 始终生成 auto_class.py
+    generator.generate_auto_class()
+
     # 检查是否有 --replace 参数
     if "--replace" in sys.argv:
         idx = sys.argv.index("--replace")
         if idx + 1 < len(sys.argv):
             target_file = sys.argv[idx + 1]
-            generator.generate_all(target_file=target_file)
+            generator.replace_autoclass_calls(target_file)
         else:
             print("Error: --replace requires a target file")
             sys.exit(1)
-    else:
-        # 只生成 auto_class.py
-        generator.generate_auto_class()
+
+    # 检查是否有 --reg-define 参数
+    if "--reg-define" in sys.argv:
+        idx = sys.argv.index("--reg-define")
+        output_path = None
+        # 检查是否提供了输出路径
+        if idx + 1 < len(sys.argv) and not sys.argv[idx + 1].startswith("--"):
+            output_path = sys.argv[idx + 1]
+        generator.generate_reg_define(output_path)

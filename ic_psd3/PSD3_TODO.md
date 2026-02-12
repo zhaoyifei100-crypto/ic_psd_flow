@@ -40,6 +40,7 @@ ic_psd3/
 
 
 ├── library/                     # 测试库层（Common Functions）
+│       ├── reg_define.py       # auto gen from XML
 │       ├── aves_class.py       # auto gen from AVES scripts
 │       ├── auto_class.py       # auto gen autoclass for designer使用IDE的自动补全功能
 │       ├── usb_common_class.py       # usb公用的common class
