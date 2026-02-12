@@ -12,6 +12,10 @@ ic_psd2/output/*
 .Python
 
 
+# Ignore generated AutoClass files
+ic_psd3/library/auto_class.py
+ic_psd3/library/aves_class.py
+
 #project testuse
 ic_psd3/library/import/gsu1001_2025_nto_scripts.txt
 ic_psd3/library/import/GSU1K1_NTO.xml
