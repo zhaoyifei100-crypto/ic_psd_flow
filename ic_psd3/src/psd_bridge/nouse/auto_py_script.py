@@ -26,7 +26,7 @@ import os
 import shutil
 
 from .xml_parser import XMLParser
-from .nouse.get_aves import GetAVES
+from .get_aves import GetAVES
 
 class AutoPyScript:
 
