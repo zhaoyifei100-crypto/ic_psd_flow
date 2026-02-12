@@ -1,0 +1,5088 @@
+﻿; ; Reset = False; ; 
+; ; ReadInterface = True; ; 
+
+----------------------------------------------------------
+Revision History
+----------------------------------------------------------
+Version 1.0
+Initial Script from Design Sims
+
+##01 GSU Power Up and Initialisation##
+:01-01 Chip Power Up:
+B0 0902 13;  I2c set
+
+; MPLL bug fix, DCTEST enable
+; yfzhao 20240417
+B0 0539 80;  auclk_count[2:0] MUST be 0
+
+; es4 only has usb2v2
+; B0 09c8 08;  up port usb2v1 or usb2v2 sel, i2c_utmi_port0_sel
+
+; 240118 add, clktree cur=01,BG trim=1100
+B0 0933 6C; vbg12=1.193v
+
+End
+
+:01-01-01 RESET ALL:
+B0 00FF FF
+End
+
+
+:01-01-02 PLL no ssc init:
+
+;; all pll disable
+B0 05F0 0A; mpll disable
+B0 05F5 06; rxa pll disable
+
+;; mpll rpll param ana
+b0 0530 8f; clk ref from xtal
+b0 0531 26; 
+b0 0532 38; 
+b0 0533 A0; 
+b0 0534 1e;
+b0 0535 d8; 
+b0 0536 99; 
+b0 0537 ff; 
+b0 0538 fe 
+b0 0539 00; dctest=0
+
+;; rxa pll param ana
+b0 0560 8f; clk ref from xtal
+b0 0561 26; 
+b0 0562 38; 
+b0 0563 A0; 
+b0 0564 1e;
+b0 0565 d8; 
+b0 0566 99; 
+b0 0567 ff; 
+b0 0568 fe 
+b0 0569 00; dctest=0
+
+;; rxc pll param ana
+b0 05b0 8f; clk ref from xtal
+b0 05b1 26; 
+b0 05b2 38; 
+b0 05b3 A0; 
+b0 05b4 1e;
+b0 05b5 d8; 
+b0 05b6 99; 
+b0 05b7 ff; 
+b0 05b8 fe 
+b0 05b9 00; dctest=0
+
+
+
+; MPLL start 2.4G
+B0 05F0 0A;  U2 PLL disable
+B0 0534 1E;  U2 PLL LDO EN
+B0 0535 58;  U2 PLL RSV 00
+B0 05F1 60;  U2 LOOPDIV 2.4G
+B0 05F0 0B;  U2 PLL enable
+
+; RXARPLL start 2.5G
+B0 0564 1E;  U3 PLL RSV
+B0 0565 58;  U3 PLL RSV
+
+; RXCRPLL start 2.5G
+; GSE RX RPLL MUST set 2.5GHz
+b0 05b4 1e;  RXCPLL RSV
+b0 05b5 58;  RXCPLL RSV
+b0 05b0 8f;  rxcref clk to xtal
+b0 041f 81;  loopdiv manen
+b0 0420 00;	 postdiv=100
+b0 0421 64;
+b0 0422 00;
+b0 0423 41;  rxcpll off
+
+
+B0 0900 08 ;  usb2 480m_domain_rst
+B0 0900 00 ;  usb2 480m_domain_rst
+
+
+B0 05F0 0B; mpll enable
+B0 05F5 07; rxa pll enable
+
+
+
+End
+
+
+:01-01-02-02 MPLL with +2000ppm:
+
+B0 05F0 0A;  U2 PLL disable
+B0 0534 1E;  U2 PLL LDO EN
+B0 0535 58;  U2 PLL RSV 00
+B0 05F1 41;  U2 LOOPDIV 577
+B0 05F2 02;  U2 LOOPDIV 577
+B0 05F0 32;  U2 PLL refdiv 6
+B0 05F0 33;  U2 PLL enable
+
+B0 0900 08 ;  usb2 480m_domain_rst
+B0 0900 00 ;  usb2 480m_domain_rst
+
+
+End
+
+:01-01-002 Hub_remove_reset:
+B0 0964 07;  hub_2_rstn & hub_ss_rstn
+End
+
+
+
+:01-01-03 ADC test:
+B0 0920 08;  ADC clkdiv ctrl
+B0 0921 1F;  ADC power on
+B0 0924 0F;  ADC sample ctrl
+End
+
+
+:01-01-04 PLL with ssc init:
+
+; enable PLL
+include this "01 GSU Power Up and Initialisation" "01-01-02 PLL no ssc init"
+
+
+
+; SEL USB3 PLL ref clk from outside 
+B0 05F8 10; 
+; SEL USB3 PLL ref clk from U2 PLL REFclk
+B0 05F5 05; 
+
+
+; SET USB3 PLL postdiv=25
+B0 05F6 19; 
+B0 05F7 00; 
+
+
+B0 06B6 00; 
+B0 06B7 00; 
+B0 06B8 00; 
+B0 06B9 80; 
+
+; SET PPM=5000, ssc_f_code_delta
+
+B0 06B1 FA; 
+B0 06B2 DB; 
+B0 06B3 03; 
+B0 06B4 00; 
+
+; SET i2c_ssc_init_dp_man
+B0 06B5 09; 
+
+; SET SSC_EN
+B0 06C0 1F; 
+
+End
+
+
+:01-01-04 PLL with ssc rxc mode:
+
+
+; yfzhao NOTE
+; this scripts need switch all dig clock to RXCPLL
+; 
+;
+
+
+; enable PLL
+include this "01 GSU Power Up and Initialisation" "01-01-02 PLL no ssc init"
+
+
+B0 05b0 88 ;; SEL RxcPLL ref clk from outside 
+B0 05F5 05 ;; SEL USB3 PLL ref clk from U2 PLL REFclk
+
+b0 041f 81 ;rxc prediv man=1
+b0 0420 00 ;rxc postdiv25
+b0 0421 19 ;rxc postdiv25
+
+
+B0 06B6 00; 
+B0 06B7 00; 
+B0 06B8 00; 
+B0 06B9 80; 
+
+; SET PPM=5000, ssc_f_code_delta
+
+B0 06B1 FA; 
+B0 06B2 DB; 
+B0 06B3 03; 
+B0 06B4 00; 
+
+; SET i2c_ssc_init_dp_man
+B0 06B5 09; 
+
+; SET SSC_EN
+B0 06C0 1F; 
+
+b0 0423 43;  rxcpll on
+
+;CLK mux 
+b0 0902 33; dig clk sel to RXc
+b0 09cc 1f; phy tx clksel=rxc
+
+End
+
+
+:01-01-04 PLL with ssc init lpmode:
+
+
+;  ===========yfzhao note===========
+;  gsu1001 support lowpower ssc mode
+;  es4 lowpower dpll option move to RXCPLL
+;  if use this scripts to generate ssc clk
+;  tx clk MUST set to RXCPLL
+
+
+;   enable PLL
+include this "01 GSU Power Up and Initialisation" "01-01-02 PLL no ssc init"
+
+
+;CLK mux 
+b0 0902 33; dig clk sel to RXc
+b0 09cc 1f; phy tx clksel=rxc
+
+
+B0 05F5 07; SET RXCrpll dpll out to cpp path
+
+;   post div control by dpll
+
+;   set dpll clk out div
+B0 05F0 0F;  
+
+;   set rxcpll rsv_7 for inner loop ssc
+B0 05B5 59;  
+
+;   set ssc code gen
+B0 06C0 0D;   ssc_en=0, mplldpll rst for lowpower
+
+;   SET i2c_ssc_init_dp_man
+B0 06B5 31;   man_en=1, man=24, pll=2.4GHz
+
+;   set init fcode to 2.5GHz-5000ppm
+b0 06b6 7c;  
+b0 06b7 86;  
+b0 06b8 5d;  
+b0 06b9 09;  
+
+;   set ppm range to 5000
+b0 06b1 FA;  
+b0 06b2 8b;  
+b0 06b3 02;  
+b0 06b4 00;  
+
+;   set ssc en=1
+B0 06C0 1D;   ssc_en=1, mplldpll rst for lowpower
+
+;pll enable
+b0 0423 43;  rxcpll on
+
+
+End
+
+
+
+
+
+:01-01-05 ANA Rx RAM EQ:
+
+; ; es4 ram eq
+; ; only ram khp_t and prevga_gain
+; ; total cfg group=3
+
+; ; short short channel, khp_t=0, prevga_gain=1
+; ; short channel, khp_t=2_3, prevga_gain=1
+; ; long channel, khp_t=4_15, prevga_gain=1
+; ; include enable ram write and off ram write
+
+
+; ; same vga gain for debug, yfzhao, 20250425
+
+b0 0905 05; 
+b0 1500 00; 
+b0 1501 40; 
+b0 1502 00; 
+b0 1503 00; 
+b0 1504 00; 
+b0 1505 01; 
+b0 1506 00; 
+b0 1507 00; 
+b0 1508 00; 
+b0 1509 00; 
+b0 150a 00; 
+b0 150b 00; 
+b0 150c c0; 
+b0 150d 00; 
+b0 150e 00; 
+b0 150f 00; 
+b0 1510 01; 
+b0 1511 00; 
+b0 1512 00; 
+b0 1513 00; 
+b0 1514 00; 
+b0 1515 00; 
+b0 1516 00; 
+b0 1517 c0; 
+b0 1518 03; 
+b0 1519 00; 
+b0 151a 00; 
+b0 151b 01; 
+b0 151c 00; 
+b0 151d 00; 
+b0 151e 00; 
+b0 151f 00; 
+b0 1520 00; 
+b0 1521 00; 
+b0 1522 00; 
+b0 1523 00; 
+b0 1524 00; 
+b0 1525 00; 
+b0 1526 00; 
+b0 1527 00; 
+b0 1528 00; 
+b0 1529 00; 
+b0 152a 00; 
+b0 152b 00; 
+b0 152c 00; 
+b0 152d 00; 
+b0 152e 00; 
+b0 152f 00; 
+b0 1530 00; 
+b0 1531 00; 
+b0 1532 00; 
+b0 1533 00; 
+b0 1534 00; 
+b0 1535 00; 
+b0 1536 00; 
+b0 1537 00; 
+b0 1538 00; 
+b0 1539 00; 
+b0 153a 00; 
+b0 153b 00; 
+b0 153c 00; 
+b0 153d 00; 
+b0 153e 00; 
+b0 153f 00; 
+b0 1540 00; 
+b0 1541 00; 
+b0 1542 00; 
+b0 1543 00; 
+b0 1544 00; 
+b0 1545 00; 
+b0 1546 00; 
+b0 1547 00; 
+b0 1548 00; 
+b0 1549 00; 
+b0 154a 00; 
+b0 154b 00; 
+b0 154c 00; 
+b0 154d 00; 
+b0 154e 00; 
+b0 154f 00; 
+b0 1550 00; 
+b0 1551 00; 
+b0 1552 00; 
+b0 1553 00; 
+b0 1554 00; 
+b0 1555 00; 
+b0 1556 00; 
+b0 1557 00; 
+b0 0905 00; 
+
+
+End
+
+
+
+
+:01-01-07 Reset PRBS:
+
+; B0 3157 85; 
+; B0 3157 81; 
+; B0 3157 85; 
+; B0 3157 81; 
+; B0 3157 C1;  
+; B0 3157 C5;  
+
+B0 3163 20; 
+B0 3164 30; 
+B0 3164 B0; 
+B0 3164 30; 
+B0 3163 30; 
+B0 3163 20; 
+B0 3163 30; 
+B0 3164 B0; 
+
+B0 3263 20; 
+B0 3264 30; 
+B0 3264 B0; 
+B0 3264 30; 
+B0 3263 30; 
+B0 3263 20; 
+B0 3263 30; 
+B0 3264 B0; 
+
+B0 3363 20; 
+B0 3364 30; 
+B0 3364 B0; 
+B0 3364 30; 
+B0 3363 30; 
+B0 3363 20; 
+B0 3363 30; 
+B0 3364 B0; 
+
+B0 3463 20; 
+B0 3464 30; 
+B0 3464 B0; 
+B0 3464 30; 
+B0 3463 30; 
+B0 3463 20; 
+B0 3463 30; 
+B0 3464 B0; 
+
+B0 3563 20; 
+B0 3564 30; 
+B0 3564 B0; 
+B0 3564 30; 
+B0 3563 30; 
+B0 3563 20; 
+B0 3563 30; 
+B0 3564 B0; 
+
+End
+
+
+:01-01-08 USB2_FSLS:
+B0 0D0B FF; 	rftime max
+B0 0D0C FF; 	rftime max
+B0 0D0D FF; 	rftime max
+B0 0D0E FF; 	rftime max
+B0 0D0A F3;  id max
+B0 0D0F 9F;  bias max
+
+B0 0E0B FF; 	rftime max
+B0 0E0C FF; 	rftime max
+B0 0E0D FF; 	rftime max
+B0 0E0E FF; 	rftime max
+B0 0E0A F3;  id max
+B0 0E0F 9F;  bias max
+
+B0 0C0B FF; 	rftime max
+B0 0C0C FF; 	rftime max
+B0 0C0D FF; 	rftime max
+B0 0C0E FF; 	rftime max
+B0 0C0A F3;  id max
+B0 0C0F 9F;  bias max
+
+B0 0B0B FF; 	rftime max
+B0 0B0C FF; 	rftime max
+B0 0B0D FF; 	rftime max
+B0 0B0E FF; 	rftime max
+B0 0B0A F3;  id max
+B0 0B0F 9F;  bias max
+
+B0 0A0B FF; 	rftime max
+B0 0A0C FF; 	rftime max
+B0 0A0D FF; 	rftime max
+B0 0A0E FF; 	rftime max
+B0 0A0A F3;  id max
+B0 0A0F 9F;  bias max
+End
+
+:01-01-09 SSC set 10000ppm:
+B0 06B1 00; 
+B0 06B2 07; 
+B0 06B3 B7; 
+B0 06B4 F4; 
+End
+
+
+
+
+
+:01-01-12 USB3 Upcdr adaptive param:
+
+
+; ; use as usb3 Rx adaptive
+; ; only up use adaptive
+
+; GSU1001 ES3 CTR page=0x10,0x11,0x12,0x13,0x14
+
+include this "01 GSU Power Up and Initialisation" "01-07-01 USB3 UP Rx ANA"
+
+b0 104b 00; khp_t man_en=0
+b0 1069 1f; khp_t seg_en=1
+b0 106a ec; prevga_gian man_en=0, when man=0, use seg
+b0 1009 0e; dfe mode=0,decheck en=1,only meas init eq cfg=1,seg en=1,init_sel=0
+b0 105b 11; meh use i2c
+b0 1060 00; meh cycle set 5,000
+b0 1061 13; 
+b0 1062 88; 
+b0 10a0 00; loop off
+b0 10a1 00; loop off
+b0 10a2 00; loop off
+b0 10a3 00; loop off
+b0 10a4 00; loop off
+b0 10a5 00; loop off
+b0 10a6 00; loop off
+
+
+
+End
+
+
+:01-01-13 Set pipe_dp1 send clkdiv10:
+
+; step1, send PRBS
+include this "03 HUB_SS TEST" "03-02 PIPE-dp1 Tx/Rx PRBS"
+
+; switch to fixed_20b
+B0 321C 20; 
+
+; <*10>1 <*10>0
+B0 3221 9F; 
+B0 3222 FF; 
+
+B0 3226 80; 
+B0 3227 00; 
+End
+
+
+:01-01-14 ANA Tx SET, USB3:
+
+; Tx preemp set cp from gsv6100
+; tx param set into pipe_page
+
+; pipe page gsu1001es3=0x31,0x32,0x33,0x34,0x35
+
+; ; ALL tx ffe set, amp=800mV
+; swing = 10
+; pre1 = 0.25
+; pre2 = 0
+; post1 = 0.5
+; post2 = 0
+; main = 8
+; ftc = 0
+
+; ; pipe up
+b0 31ea c0; 
+b0 313a 52; 
+b0 313a 52; 
+b0 313b 94; 
+b0 313b 94; 
+b0 313b 94; 
+b0 313c a5; 
+b0 313c a5; 
+b0 313d 29; 
+b0 313d 29; 
+b0 313d 29; 
+b0 313e 4a; 
+b0 313e 4a; 
+b0 313f 52; 
+b0 313f 52; 
+b0 3140 94; 
+b0 3140 94; 
+b0 3140 94; 
+b0 3141 a0; 
+b0 31f0 00; 
+b0 31ea c0; 
+b0 31f6 0e; 
+b0 31f7 00; 
+b0 310e 40; 
+b0 31ed 1f; 
+b0 31ee f7; 
+
+; ; pipe dp1
+b0 32ea c0; 
+b0 323a 52; 
+b0 323a 52; 
+b0 323b 94; 
+b0 323b 94; 
+b0 323b 94; 
+b0 323c a5; 
+b0 323c a5; 
+b0 323d 29; 
+b0 323d 29; 
+b0 323d 29; 
+b0 323e 4a; 
+b0 323e 4a; 
+b0 323f 52; 
+b0 323f 52; 
+b0 3240 94; 
+b0 3240 94; 
+b0 3240 94; 
+b0 3241 a0; 
+b0 32f0 00; 
+b0 32ea c0; 
+b0 32f6 0e; 
+b0 32f7 00; 
+b0 320e 40; 
+b0 32ed 1f; 
+b0 32ee f7; 
+
+; ; pipe dp2
+b0 33ea c0; 
+b0 333a 52; 
+b0 333a 52; 
+b0 333b 94; 
+b0 333b 94; 
+b0 333b 94; 
+b0 333c a5; 
+b0 333c a5; 
+b0 333d 29; 
+b0 333d 29; 
+b0 333d 29; 
+b0 333e 4a; 
+b0 333e 4a; 
+b0 333f 52; 
+b0 333f 52; 
+b0 3340 94; 
+b0 3340 94; 
+b0 3340 94; 
+b0 3341 a0; 
+b0 33f0 00; 
+b0 33ea c0; 
+b0 33f6 0e; 
+b0 33f7 00; 
+b0 330e 40; 
+b0 33ed 1f; 
+b0 33ee f7; 
+
+; ; pipe dp3
+b0 34ea c0; 
+b0 343a 52; 
+b0 343a 52; 
+b0 343b 94; 
+b0 343b 94; 
+b0 343b 94; 
+b0 343c a5; 
+b0 343c a5; 
+b0 343d 29; 
+b0 343d 29; 
+b0 343d 29; 
+b0 343e 4a; 
+b0 343e 4a; 
+b0 343f 52; 
+b0 343f 52; 
+b0 3440 94; 
+b0 3440 94; 
+b0 3440 94; 
+b0 3441 a0; 
+b0 34f0 00; 
+b0 34ea c0; 
+b0 34f6 0e; 
+b0 34f7 00; 
+b0 340e 40; 
+b0 34ed 1f; 
+b0 34ee f7; 
+
+; ; pipe dp4
+b0 35ea c0; 
+b0 353a 52; 
+b0 353a 52; 
+b0 353b 94; 
+b0 353b 94; 
+b0 353b 94; 
+b0 353c a5; 
+b0 353c a5; 
+b0 353d 29; 
+b0 353d 29; 
+b0 353d 29; 
+b0 353e 4a; 
+b0 353e 4a; 
+b0 353f 52; 
+b0 353f 52; 
+b0 3540 94; 
+b0 3540 94; 
+b0 3540 94; 
+b0 3541 a0; 
+b0 35f0 00; 
+b0 35ea c0; 
+b0 35f6 0e; 
+b0 35f7 00; 
+b0 350e 40; 
+b0 35ed 1f; 
+b0 35ee f7; 
+
+End
+
+;  ===============USB2 ANA===================
+
+:01-05-04 USB2v2 UP ANA:
+; B0 4205 0C;  nsql sel
+B0 4216 20;  disc mode sel
+B0 4219 39;  utmi_en=1
+B0 421A 0C;  utmi_en=1
+B0 421B 00;  man=0
+B0 421C 00;  sql_sel=0
+B0 4225 08;  clrcnt=08
+B0 4226 08;  oneshot_acc=08
+B0 4227 04;  date_buf=0
+B0 4228 00;  qc3.0 clk_div=0
+B0 4229 09;  dsel_mode=1 mvth=4
+B0 422A 04;  clr_mode=0 date_buf_sel=0
+B0 422B 50;  valid_drop_sel=2 calib_swing_int=16
+B0 422C 02;  swing_man=0 acc_valid=2
+B0 422D 08;  loopf_bw=08
+B0 4208 F4;  Tx Swing bias ctrl, sql_ref=120m
+B0 4210 63;  Tx Swing 
+B0 4204 CF;  disc ref 650mV, se_sql_ref>100m
+B0 4207 9A;  rx half gain
+B0 4205 0C;  0pole
+; B0 476A 10
+; B0 476C 7D
+End
+
+
+:01-05-05 USB2v2 DP1 ANA:
+B0 4316 20;  disc mode sel
+B0 4319 39;  utmi_en=1
+B0 431A 0C;  utmi_en=1
+B0 431B 00;  man=0
+B0 431C 00;  sql_sel=0
+B0 4325 08;  clrcnt=08
+B0 4326 08;  oneshot_acc=08
+B0 4327 04;  date_buf=0
+B0 4328 00;  qc3.0 clk_div=0
+B0 4329 09;  dsel_mode=1 mvth=4
+B0 432A 04;  clr_mode=0 date_buf_sel=0
+B0 432B 50;  valid_drop_sel=2 calib_swing_int=16
+B0 432C 02;  swing_man=0 acc_valid=2
+B0 432D 08;  loopf_bw=08
+B0 4308 F4;  Tx Swing bias ctrl, sql_ref=120m
+B0 4310 63;  Tx Swing 
+B0 4304 CF;  disc ref 650mV, se_sql_ref>100m
+B0 4307 9A;  rx half gain
+B0 4305 0C;  0pole
+
+End
+
+:01-05-06 USB2v2 DP2 ANA:
+B0 4416 20;  disc mode sel
+B0 4419 39;  utmi_en=1
+B0 441A 0C;  utmi_en=1
+B0 441B 00;  man=0
+B0 441C 00;  sql_sel=0
+B0 4425 08;  clrcnt=08
+B0 4426 08;  oneshot_acc=08
+B0 4427 04;  date_buf=0
+B0 4428 00;  qc3.0 clk_div=0
+B0 4429 09;  dsel_mode=1 mvth=4
+B0 442A 04;  clr_mode=0 date_buf_sel=0
+B0 442B 50;  valid_drop_sel=2 calib_swing_int=16
+B0 442C 02;  swing_man=0 acc_valid=2
+B0 442D 08;  loopf_bw=08
+B0 4408 F4;  Tx Swing bias ctrl, sql_ref=120m
+B0 4410 63;  Tx Swing 
+B0 4404 CF;  disc ref 650mV, se_sql_ref>100m
+B0 4407 9A;  rx half gain
+B0 4405 0C;  0pole
+
+End
+
+
+:01-05-07 USB2v2 DP3 ANA:
+; B0 4505 0C;  nsql sel
+B0 4516 20;  disc mode sel
+B0 4519 39;  utmi_en=1
+B0 451A 0C;  utmi_en=1
+B0 451B 00;  man=0
+B0 451C 00;  sql_sel=0
+B0 4525 08;  clrcnt=08
+B0 4526 08;  oneshot_acc=08
+B0 4527 04;  date_buf=0
+B0 4528 00;  qc3.0 clk_div=0
+B0 4529 09;  dsel_mode=1 mvth=4
+B0 452A 04;  clr_mode=0 date_buf_sel=0
+B0 452B 50;  valid_drop_sel=2 calib_swing_int=16
+B0 452C 02;  swing_man=0 acc_valid=2
+B0 452D 08;  loopf_bw=08
+B0 4508 F4;  Tx Swing bias ctrl, sql_ref=120m
+B0 4510 63;  Tx Swing 
+B0 4504 CF;  disc ref 650mV, se_sql_ref>100m
+B0 4507 9A;  rx half gain
+B0 4505 0C;  0pole
+; B0 4A6A 10
+; B0 4A6C 7D
+End
+
+
+:01-05-08 USB2v2 DP4 ANA:
+; B0 4605 0C;  nsql sel
+B0 4616 20;  disc mode sel
+B0 4619 39;  utmi_en=1
+B0 461A 0C;  utmi_en=1
+B0 461B 00;  man=0
+B0 461C 00;  sql_sel=0
+B0 4625 08;  clrcnt=08
+B0 4626 08;  oneshot_acc=08
+B0 4627 04;  date_buf=0
+B0 4628 00;  qc3.0 clk_div=0
+B0 4629 09;  dsel_mode=1 mvth=4
+B0 462A 04;  clr_mode=0 date_buf_sel=0
+B0 462B 50;  valid_drop_sel=2 calib_swing_int=16
+B0 462C 02;  swing_man=0 acc_valid=2
+B0 462D 08;  loopf_bw=08
+B0 4608 F4;  Tx Swing bias ctrl, sql_ref=120m
+B0 4610 63;  Tx Swing
+B0 4604 CF;  disc ref 650mV, se_sql_ref>100m
+B0 4607 9A;  rx half gain
+B0 4605 0C;  0pole
+; B0 4B6A 10
+; B0 4B6C 7D
+End
+
+
+:01-05-09 USB2v2 MODE2:
+
+;  UPv2
+B0 4229 0A;  dsel_mode=2
+B0 422A 0C;  date_buf_sel=12
+B0 476A 01;  utm_eop_cnt=1
+
+;  DP1v2
+B0 4329 0A;  dsel_mode=2
+B0 432A 0C;  date_buf_sel=12
+B0 486A 01;  utm_eop_cnt=1
+
+;  DP2v2
+B0 4429 0A;  dsel_mode=2
+B0 442A 0C;  date_buf_sel=12
+B0 496A 01;  utm_eop_cnt=1
+
+;  DP3v2
+B0 4529 0A;  dsel_mode=2
+B0 452A 0C;  date_buf_sel=12
+B0 4A6A 01;  utm_eop_cnt=1
+
+;  DP4v2
+B0 4629 0A;  dsel_mode=2
+B0 462A 0C;  date_buf_sel=12
+B0 4B6A 01;  utm_eop_cnt=1
+End
+
+
+:01-05-10 USB2 Phy ALL:
+
+; ; GSU1001ES3 TSMC40 MPW keep v1 for test
+; include this "01 GSU Power Up and Initialisation" "01-05-01 USB2v1 UP ANA"
+; include this "01 GSU Power Up and Initialisation" "01-05-02 USB2v1 DP1 ANA"
+; include this "01 GSU Power Up and Initialisation" "01-05-03 USB2v1 DP2 ANA"
+
+; ; GSU1001ES4 SMIC55 only use usb2v2
+include this "01 GSU Power Up and Initialisation" "01-05-04 USB2v2 UP ANA"
+include this "01 GSU Power Up and Initialisation" "01-05-05 USB2v2 DP1 ANA"
+include this "01 GSU Power Up and Initialisation" "01-05-06 USB2v2 DP2 ANA"
+include this "01 GSU Power Up and Initialisation" "01-05-07 USB2v2 DP3 ANA"
+include this "01 GSU Power Up and Initialisation" "01-05-08 USB2v2 DP4 ANA"
+
+; ; USB2.0 CDR MODE2 for UTM BUG
+include this "01 GSU Power Up and Initialisation" "01-05-09 USB2v2 MODE2"
+
+;  ===========yfzhao note===========
+;  if donot want to use CDR MODE2
+;  es4 can try to decrease i2c_u2v2_cdr_clrcnt_th
+; 	for more short eop noise
+
+
+End
+
+
+;  ===============PIPE ANA===================
+
+
+:01-06-01 PIPE ANA UP:
+;  ===========yfzhao note===========
+;  base on smic55 simu result
+;  Tx_Preemp set to 1, for post=1 preemp
+;  LFPS fasel set to 3, so shared i2c mem 0xEE=0x07
+
+;  ES4 LFPS clk div sel only use bit0
+;  deg_div_sel_0->0 is 2.5G DIV4
+;  deg_div_sel_0->1 is 2.5G DIV8
+
+;  ES4 LFPS CK600
+;  i2c_usb3_rx_cm_ctrl1 -> ck600_hysis_en
+
+B0 3121 82;  RXDET wait time
+B0 3122 00;  RXDET wait time
+B0 3123 00; 
+B0 3124 FF; 
+B0 3125 3e; 
+B0 3126 41;  rxdet clk is 10us/clk
+B0 3127 90;  lower rctime, ugreen ssd
+B0 31F9 00;  LFPS BW max
+B0 31EE 07;  LFPS fasel=3
+B0 31EF 0C;  LFPS ref_ctrl=3
+B0 31EB 00;  LFPS div4, 2.5G/4, short LFPS change to DIV8
+B0 31EA 86;  curadj=1, cm_ctrl=0b10, swing_man=1
+
+; change sterm base on ES2 test result
+b0 31e9 01;  sterm_override=1
+b0 31f0 14;  sterm=101 
+
+; rxdet volt fix
+;b0 31f1 03;  refcomp=2.75, reflow=2.33
+
+; all swing set=30
+b0 313a f0;  
+b0 313a f7;  
+b0 313b 80;  
+b0 313b bc;  
+b0 313b bd;  
+b0 313c e0;  
+b0 313c ef;  
+b0 313d 00;  
+b0 313d 78;  
+b0 313d 7b;  
+b0 313e c0;  
+b0 313e de;  
+b0 313f f0;  
+b0 313f f7;  
+b0 3140 80;  
+b0 3140 bc;  
+b0 3140 bd;  
+
+End
+
+
+:01-06-02 PIPE ANA DP1:
+
+B0 3221 82;  RXDET wait time
+B0 3222 00;  RXDET wait time
+B0 3223 00; 
+B0 3224 FF; 
+B0 3225 3e; 
+B0 3226 41;  rxdet clk is 10us/clk
+B0 3227 90;  lower rctime, ugreen ssd
+B0 32F9 00;  LFPS BW max
+B0 32EE 07;  LFPS fasel=3
+B0 32EF 0C;  LFPS ref_ctrl=3
+B0 32EB 00;  LFPS div4, 2.5G/4, short LFPS change to DIV8
+B0 32EA 86;  curadj=1, cm_ctrl=0b10, swing_man=1
+b0 32e9 01;  sterm_override=1
+b0 32f0 14;  sterm=101 
+;b0 32f1 03;  refcomp=2.75, reflow=2.33
+b0 323a f0;  
+b0 323a f7;  
+b0 323b 80;  
+b0 323b bc;  
+b0 323b bd;  
+b0 323c e0;  
+b0 323c ef;  
+b0 323d 00;  
+b0 323d 78;  
+b0 323d 7b;  
+b0 323e c0;  
+b0 323e de;  
+b0 323f f0;  
+b0 323f f7;  
+b0 3240 80;  
+b0 3240 bc;  
+b0 3240 bd;  
+
+End
+
+
+:01-06-03 PIPE ANA DP2:
+
+B0 3321 82;  RXDET wait time
+B0 3322 00;  RXDET wait time
+B0 3323 00; 
+B0 3324 FF; 
+B0 3325 3e; 
+B0 3326 41;  rxdet clk is 10us/clk
+B0 3327 90;  lower rctime, ugreen ssd
+B0 33F9 00;  LFPS BWmax
+B0 33EE 07;  LFPS fasel=3
+B0 33EF 0C;  LFPS ref_ctrl=3
+B0 33EB 00;  LFPS div4, 2.5G/4, short LFPS change to DIV8
+B0 33EA 86;  curadj=1, cm_ctrl=0b10, swing_man=1
+b0 33e9 01;  sterm_override=1
+b0 33f0 14;  sterm=101 
+;b0 33f1 03;  refcomp=2.75, reflow=2.33
+b0 333a f0;  
+b0 333a f7;  
+b0 333b 80;  
+b0 333b bc;  
+b0 333b bd;  
+b0 333c e0;  
+b0 333c ef;  
+b0 333d 00;  
+b0 333d 78;  
+b0 333d 7b;  
+b0 333e c0;  
+b0 333e de;  
+b0 333f f0;  
+b0 333f f7;  
+b0 3340 80;  
+b0 3340 bc;  
+b0 3340 bd;  
+
+End
+
+
+:01-06-04 PIPE ANA DP3:
+
+B0 3421 82;  RXDET wait time
+B0 3422 00;  RXDET wait time
+B0 3423 00; 
+B0 3424 FF; 
+B0 3425 3e; 
+B0 3426 41;  rxdet clk is 10us/clk
+B0 3427 90;  lower rctime, ugreen ssd
+B0 34F9 00;  LFPS BWmax
+B0 34EE 07;  LFPS fasel=3
+B0 34EF 0C;  LFPS ref_ctrl=3
+B0 34EB 00;  LFPS div4, 2.5G/4, short LFPS change to DIV8
+B0 34EA 86;  curadj=1, cm_ctrl=0b10, swing_man=1
+b0 34e9 01;  sterm_override=1
+b0 34f0 14;  sterm=101 
+;b0 34f1 03;  refcomp=2.75, reflow=2.33
+b0 343a f0;  
+b0 343a f7;  
+b0 343b 80;  
+b0 343b bc;  
+b0 343b bd;  
+b0 343c e0;  
+b0 343c ef;  
+b0 343d 00;  
+b0 343d 78;  
+b0 343d 7b;  
+b0 343e c0;  
+b0 343e de;  
+b0 343f f0;  
+b0 343f f7;  
+b0 3440 80;  
+b0 3440 bc;  
+b0 3440 bd;  
+
+End
+
+
+:01-06-05 PIPE ANA DP4:
+
+B0 3521 82;  RXDET wait time
+B0 3522 00;  RXDET wait time
+B0 3523 00; 
+B0 3524 FF; 
+B0 3525 3e; 
+B0 3526 41;  rxdet clk is 10us/clk
+B0 3527 90;  lower rctime, ugreen ssd
+B0 35F9 00;  LFPS Bw max
+B0 35EE 07;  LFPS fasel=3
+B0 35EF 0C;  LFPS ref_ctrl=3
+B0 35EB 00;  LFPS div4, 2.5G/4, short LFPS change to DIV8
+B0 35EA 86;  curadj=1, cm_ctrl=0b10, swing_man=1
+b0 35e9 01;  sterm_override=1
+b0 35f0 14;  sterm=101 
+;b0 35f1 03;  refcomp=2.75, reflow=2.33
+b0 353a f0;  
+b0 353a f7;  
+b0 353b 80;  
+b0 353b bc;  
+b0 353b bd;  
+b0 353c e0;  
+b0 353c ef;  
+b0 353d 00;  
+b0 353d 78;  
+b0 353d 7b;  
+b0 353e c0;  
+b0 353e de;  
+b0 353f f0;  
+b0 353f f7;  
+b0 3540 80;  
+b0 3540 bc;  
+b0 3540 bd;  
+
+End
+
+
+:01-06-06 ana_debug_dp3_symbol_lock_use_rext:
+
+
+; use logic analizer read REXT_GPIO6
+; debug symbol lock
+; if symbol lock keep 1, means link layer be stable
+
+b0 0983 06; 
+b0 0983 06; 
+b0 09c9 00; 
+b0 09c9 00; 
+b0 09ca 00; 
+b0 09ca 00; 
+b0 09c4 3f; 
+b0 09c4 3f; 
+b0 09c4 3f; 
+b0 09c4 3f; 
+b0 09c4 3f; 
+b0 09c4 3f; 
+b0 09c7 00; 
+b0 09c5 00; 
+b0 09c5 00; 
+b0 09c6 00; 
+b0 09c6 00; 
+b0 31e4 db; 
+b0 3118 db; 
+b0 32e4 5b; 
+b0 3218 5b; 
+b0 33e4 5b; 
+b0 3318 5b; 
+b0 34e4 5b; 
+b0 3418 5b; 
+b0 35e4 5b; 
+b0 3518 5b; 
+b0 31e4 37; 
+b0 3118 37; 
+b0 34e4 37; 
+b0 3418 37; 
+
+
+End
+
+:01-06-07 ana_debug_up_symbol_lock_use_rext:
+
+; use logic analizer read REXT_GPIO6
+; debug symbol lock
+; if symbol lock keep 1, means link layer be stable
+
+b0 0983 06; 
+b0 0983 06; 
+b0 09c9 00; 
+b0 09c9 20; 
+b0 09ca 00; 
+b0 09ca 00; 
+b0 09c4 3f; 
+b0 09c4 3f; 
+b0 09c4 3f; 
+b0 09c4 3f; 
+b0 09c4 3f; 
+b0 09c4 3f; 
+b0 09c7 00; 
+b0 09c5 00; 
+b0 09c5 00; 
+b0 09c6 00; 
+b0 09c6 00; 
+b0 31e4 db; 
+b0 3118 db; 
+b0 32e4 5b; 
+b0 3218 5b; 
+b0 33e4 5b; 
+b0 3318 5b; 
+b0 34e4 5b; 
+b0 3418 5b; 
+b0 35e4 5b; 
+b0 3518 5b; 
+b0 31e4 37; 
+b0 3118 37; 
+b0 34e4 37; 
+b0 3418 37; 
+
+
+End
+
+
+
+
+:01-06-10 PIPE ANA ALL:
+
+include this "01 GSU Power Up and Initialisation" "01-06-01 PIPE ANA UP"
+include this "01 GSU Power Up and Initialisation" "01-06-02 PIPE ANA DP1"
+include this "01 GSU Power Up and Initialisation" "01-06-03 PIPE ANA DP2"
+include this "01 GSU Power Up and Initialisation" "01-06-04 PIPE ANA DP3"
+include this "01 GSU Power Up and Initialisation" "01-06-05 PIPE ANA DP4"
+
+End
+
+;  ===============USB3 RX ANA===================
+; GSU1001 ES3 CTR page=0x10,0x11,0x12,0x13,0x14
+
+:01-07-01 USB3 UP Rx ANA:
+
+; gsu1001es4 ctle AC&DC gain AS_SAME_AS es3
+
+;  ===========yfzhao note===========
+; this setting depend on pipe EQ_START signal
+; donot use freqtracking_auto reset CDR & DFE
+; cdrv4 need further test
+
+;yfzhao 1015test
+;poly+ptat set 5
+;vga dcgain set0dB
+;ctle gain set 1
+
+b0 1001 04; cdr ctrl,when after rstn,not skip
+b0 1006 00; d_e_check balance set0
+b0 1009 0E;  cdr set seg mode
+b0 100A 20;  1D meas DAC settle time=100ns
+b0 1013 01;  h0 floor=1
+b0 103F 01;  cdr_resetb man=0
+b0 1048 80;  man_en a0_t
+b0 104A 83;  ES4 stg2 zero=3
+b0 104B 80; 
+b0 104C 01;  ES4 khp_t=1
+b0 104D 80;  ES4 set00 1.2mA 3dB gain
+b0 104E 81;  stg1_gain=1
+b0 104F 83;  stg1_zero=3, es4
+b0 1054 04;  vga_cm=4
+b0 1055 03;  ES4 ipoly=3
+b0 1056 02;  ES4 iptat=2
+b0 1059 04;  pi_adj=100, 100uA
+b0 105B 11;  meh settle use i2c
+b0 1060 00;  meh set 5000
+b0 1061 13;  meh set 5000
+b0 1062 88;  meh set 5000
+b0 1063 03; ; cdr settle cycles set 1ms
+b0 1064 D0; ; cdr settle cycles set 1ms
+b0 1065 90; ; cdr settle cycles set 1ms
+b0 1099 30;  dfe tap init reset=0, use pi 64step
+b0 109B 18;  DFE enable
+b0 109D 00; ; lane spare,ALL0
+b0 109E 00; ; lane spare,ALL0
+b0 10A0 00; loopen all 0
+b0 10A1 00; loopen all 0
+b0 10A2 00; loopen all 0
+b0 10A3 00; loopen all 0
+b0 10A4 00; loopen all 0
+b0 10A5 00; loopen all 0
+b0 10A6 00; loopen all 0
+b0 10BA 3C;  tap2-5 rst; DFE 1tap set
+b0 10C6 FD;  min=253; DFE tap1 max min set
+b0 10C7 0A;  max=10
+b0 10E0 87;  man_en=1; en=1; cdr freqtracking
+b0 10E1 cf;  SSC; pgain=15, fgain=12, 4*2
+b0 10E2 00;  CDR clk=1.25G
+b0 10E3 02;  cdr reset midway=00, midway sel=0
+b0 10EA 54;  ctle temp off, corner
+b0 10EB 4C; 
+b0 10EC 2D;  ES4 prevga=2
+b0 10ED 02;  postvga=2
+b0 10EE 20;  ES4 pole_cap=2
+b0 10EF 00;  pole_cur_old=0, temp8
+b0 10F2 00;  spare1_0=0, SEL A, DFEclk use anareset
+
+; DEFAULT USE V4 CDR
+; SIMU CHECK PASS
+; CDRv4 i2c set 
+; lane_spare<12>->i2c_cdr_filter_sel  //1 sel usb3 0 sel hdmi
+; lane_spare<11:8>->i2c_cdr_debug_sel<3:0>
+; lane_spare<7:0>->i2c_cdr_pd_use<7:0>
+; i2c_man_weight_t_eye<29:16>->fcnt_max<13:0>
+; i2c_man_weight_t_eye<13:0>->fcnt_min<13:0>
+; {i2c_man_ckb_sel_eye,i2c_man_cka_sel_eye}->cic_bw<1:0>
+
+b0 109E 0F; pd_use=00001111
+b0 105F 00; cdr fmin set
+b0 105E 10; cdr fmin set -4096
+b0 105D 00; cdr fmax set 
+b0 105C 04; cdr fmax set +1024
+b0 105B D1; cdr cicbw set2
+; b0 109D 00;  CDR use v3
+b0 109D 10; cdr use v4, debug sel=0
+
+; ; ES4 add freq_auto reset CDR&DFE
+; ; pipe must set auto function
+; b0 10E3 12; cdr midway=1
+; b0 10F2 18; dfe_rst_en=1, dfe_rst_sel=1
+
+End
+
+:01-07-02 USB3 DP1 Rx ANA:
+
+b0 1101 04; cdr ctrl,when after rstn,not skip
+b0 1106 00; d_e_check balance set0
+b0 1109 0E;  cdr set seg mode
+b0 110A 20;  1D meas DAC settle time=100ns
+b0 1113 01;  h0 floor=1
+b0 113F 01;  cdr_resetb man=0
+b0 1148 80;  man_en a0_t
+b0 114A 83;  ES4 stg2 zero=3
+b0 114B 80; 
+b0 114C 01;  ES4 khp_t=1
+b0 114D 80;  ES4 set00 1.2mA 3dB gain
+b0 114E 81;  stg1_gain=1
+b0 114F 83;  stg1_zero=3, es4
+b0 1154 04;  vga_cm=4
+b0 1155 03;  ES4 ipoly=3
+b0 1156 02;  ES4 iptat=2
+b0 1159 04;  pi_adj=100, 100uA
+b0 115B 11;  meh settle use i2c
+b0 1160 00;  meh set 5000
+b0 1161 13;  meh set 5000
+b0 1162 88;  meh set 5000
+b0 1163 03; ; cdr settle cycles set 1ms
+b0 1164 D0; ; cdr settle cycles set 1ms
+b0 1165 90; ; cdr settle cycles set 1ms
+b0 1199 30;  dfe tap init reset=0, use pi 64step
+b0 119B 18;  DFE enable
+b0 119D 00; ; lane spare,ALL0
+b0 119E 00; ; lane spare,ALL0
+b0 11A0 00; loopen all 0
+b0 11A1 00; loopen all 0
+b0 11A2 00; loopen all 0
+b0 11A3 00; loopen all 0
+b0 11A4 00; loopen all 0
+b0 11A5 00; loopen all 0
+b0 11A6 00; loopen all 0
+b0 11BA 3C;  tap2-5 rst; DFE 1tap set
+b0 11C6 FD;  min=253; DFE tap1 max min set
+b0 11C7 0A;  max=10
+b0 11E0 87;  man_en=1; en=1; cdr freqtracking
+b0 11E1 cf;  SSC; pgain=15, fgain=12, 4*2
+b0 11E2 00;  CDR clk=1.25G
+b0 11E3 02;  cdr reset midway=00, midway sel=0
+b0 11EA 54;  ctle temp off, corner
+b0 11EB 4C; 
+b0 11EC 2D;  ES4 prevga=2
+b0 11ED 02;  postvga=2
+b0 11EE 20;  ES4 pole_cap=2
+b0 11EF 00;  pole_cur_old=0, temp8
+b0 11F2 00;  spare1_0=0, SEL A, DFEclk use anareset
+b0 119E 0F; pd_use=00001111
+b0 115F 00; cdr fmin set
+b0 115E 10; cdr fmin set -4096
+b0 115D 00; cdr fmax set 
+b0 115C 04; cdr fmax set +1024
+b0 115B D1; cdr cicbw set2
+b0 119D 10; cdr use v4, debug sel=0
+
+
+End
+
+
+
+:01-07-03 USB3 DP2 Rx ANA:
+
+b0 1201 04; cdr ctrl,when after rstn,not skip
+b0 1206 00; d_e_check balance set0
+b0 1209 0E;  cdr set seg mode
+b0 120A 20;  1D meas DAC settle time=100ns
+b0 1213 01;  h0 floor=1
+b0 123F 01;  cdr_resetb man=0
+b0 1248 80;  man_en a0_t
+b0 124A 83;  ES4 stg2 zero=3
+b0 124B 80; 
+b0 124C 01;  ES4 khp_t=1
+b0 124D 80;  ES4 set00 1.2mA 3dB gain
+b0 124E 81;  stg1_gain=1
+b0 124F 83;  stg1_zero=3, es4
+b0 1254 04;  vga_cm=4
+b0 1255 03;  ES4 ipoly=3
+b0 1256 02;  ES4 iptat=2
+b0 1259 04;  pi_adj=100, 100uA
+b0 125B 11;  meh settle use i2c
+b0 1260 00;  meh set 5000
+b0 1261 13;  meh set 5000
+b0 1262 88;  meh set 5000
+b0 1263 03; ; cdr settle cycles set 1ms
+b0 1264 D0; ; cdr settle cycles set 1ms
+b0 1265 90; ; cdr settle cycles set 1ms
+b0 1299 30;  dfe tap init reset=0, use pi 64step
+b0 129B 18;  DFE enable
+b0 129D 00; ; lane spare,ALL0
+b0 129E 00; ; lane spare,ALL0
+b0 12A0 00; loopen all 0
+b0 12A1 00; loopen all 0
+b0 12A2 00; loopen all 0
+b0 12A3 00; loopen all 0
+b0 12A4 00; loopen all 0
+b0 12A5 00; loopen all 0
+b0 12A6 00; loopen all 0
+b0 12BA 3C;  tap2-5 rst; DFE 1tap set
+b0 12C6 FD;  min=253; DFE tap1 max min set
+b0 12C7 0A;  max=10
+b0 12E0 87;  man_en=1; en=1; cdr freqtracking
+b0 12E1 cf;  SSC; pgain=15, fgain=12, 4*2
+b0 12E2 00;  CDR clk=1.25G
+b0 12E3 02;  cdr reset midway=00, midway sel=0
+b0 12EA 54;  ctle temp off, corner
+b0 12EB 4C; 
+b0 12EC 2D;  ES4 prevga=2
+b0 12ED 02;  postvga=2
+b0 12EE 20;  ES4 pole_cap=2
+b0 12EF 00;  pole_cur_old=0, temp8
+b0 12F2 00;  spare1_0=0, SEL A, DFEclk use anareset
+b0 129E 0F; pd_use=00001111
+b0 125F 00; cdr fmin set
+b0 125E 10; cdr fmin set -4096
+b0 125D 00; cdr fmax set 
+b0 125C 04; cdr fmax set +1024
+b0 125B D1; cdr cicbw set2
+b0 129D 10; cdr use v4, debug sel=0
+
+End
+
+
+:01-07-04 USB3 DP3 Rx ANA:
+
+b0 1301 04; cdr ctrl,when after rstn,not skip
+b0 1306 00; d_e_check balance set0
+b0 1309 0E;  cdr set seg mode
+b0 130A 20;  1D meas DAC settle time=100ns
+b0 1313 01;  h0 floor=1
+b0 133F 01;  cdr_resetb man=0
+b0 1348 80;  man_en a0_t
+b0 134A 83;  ES4 stg2 zero=3
+b0 134B 80; 
+b0 134C 01;  ES4 khp_t=1
+b0 134D 80;  ES4 set00 1.2mA 3dB gain
+b0 134E 81;  stg1_gain=1
+b0 134F 83;  stg1_zero=3, es4
+b0 1354 04;  vga_cm=4
+b0 1355 03;  ES4 ipoly=3
+b0 1356 02;  ES4 iptat=2
+b0 1359 04;  pi_adj=100, 100uA
+b0 135B 11;  meh settle use i2c
+b0 1360 00;  meh set 5000
+b0 1361 13;  meh set 5000
+b0 1362 88;  meh set 5000
+b0 1363 03; ; cdr settle cycles set 1ms
+b0 1364 D0; ; cdr settle cycles set 1ms
+b0 1365 90; ; cdr settle cycles set 1ms
+b0 1399 30;  dfe tap init reset=0, use pi 64step
+b0 139B 18;  DFE enable
+b0 139D 00; ; lane spare,ALL0
+b0 139E 00; ; lane spare,ALL0
+b0 13A0 00; loopen all 0
+b0 13A1 00; loopen all 0
+b0 13A2 00; loopen all 0
+b0 13A3 00; loopen all 0
+b0 13A4 00; loopen all 0
+b0 13A5 00; loopen all 0
+b0 13A6 00; loopen all 0
+b0 13BA 3C;  tap2-5 rst; DFE 1tap set
+b0 13C6 FD;  min=253; DFE tap1 max min set
+b0 13C7 0A;  max=10
+b0 13E0 87;  man_en=1; en=1; cdr freqtracking
+b0 13E1 cf;  SSC; pgain=15, fgain=12, 4*2
+b0 13E2 00;  CDR clk=1.25G
+b0 13E3 02;  cdr reset midway=00, midway sel=0
+b0 13EA 54;  ctle temp off, corner
+b0 13EB 4C; 
+b0 13EC 2D;  ES4 prevga=2
+b0 13ED 02;  postvga=2
+b0 13EE 20;  ES4 pole_cap=2
+b0 13EF 00;  pole_cur_old=0, temp8
+b0 13F2 00;  spare1_0=0, SEL A, DFEclk use anareset
+b0 139E 0F; pd_use=00001111
+b0 135F 00; cdr fmin set
+b0 135E 10; cdr fmin set -4096
+b0 135D 00; cdr fmax set 
+b0 135C 04; cdr fmax set +1024
+b0 135B D1; cdr cicbw set2
+b0 139D 10; cdr use v4, debug sel=0
+
+End
+
+
+:01-07-05 USB3 DP4 Rx ANA:
+
+b0 1401 04; cdr ctrl,when after rstn,not skip
+b0 1406 00; d_e_check balance set0
+b0 1409 0E;  cdr set seg mode
+b0 140A 20;  1D meas DAC settle time=100ns
+b0 1413 01;  h0 floor=1
+b0 143F 01;  cdr_resetb man=0
+b0 1448 80;  man_en a0_t
+b0 144A 83;  ES4 stg2 zero=3
+b0 144B 80; 
+b0 144C 01;  ES4 khp_t=1
+b0 144D 80;  ES4 set00 1.2mA 3dB gain
+b0 144E 81;  stg1_gain=1
+b0 144F 83;  stg1_zero=3, es4
+b0 1454 04;  vga_cm=4
+b0 1455 03;  ES4 ipoly=3
+b0 1456 02;  ES4 iptat=2
+b0 1459 04;  pi_adj=100, 100uA
+b0 145B 11;  meh settle use i2c
+b0 1460 00;  meh set 5000
+b0 1461 13;  meh set 5000
+b0 1462 88;  meh set 5000
+b0 1463 03; ; cdr settle cycles set 1ms
+b0 1464 D0; ; cdr settle cycles set 1ms
+b0 1465 90; ; cdr settle cycles set 1ms
+b0 1499 30;  dfe tap init reset=0, use pi 64step
+b0 149B 18;  DFE enable
+b0 149D 00; ; lane spare,ALL0
+b0 149E 00; ; lane spare,ALL0
+b0 14A0 00; loopen all 0
+b0 14A1 00; loopen all 0
+b0 14A2 00; loopen all 0
+b0 14A3 00; loopen all 0
+b0 14A4 00; loopen all 0
+b0 14A5 00; loopen all 0
+b0 14A6 00; loopen all 0
+b0 14BA 3C;  tap2-5 rst; DFE 1tap set
+b0 14C6 FD;  min=253; DFE tap1 max min set
+b0 14C7 0A;  max=10
+b0 14E0 87;  man_en=1; en=1; cdr freqtracking
+b0 14E1 cf;  SSC; pgain=15, fgain=12, 4*2
+b0 14E2 00;  CDR clk=1.25G
+b0 14E3 02;  cdr reset midway=00, midway sel=0
+b0 14EA 54;  ctle temp off, corner
+b0 14EB 4C; 
+b0 14EC 2D;  ES4 prevga=2
+b0 14ED 02;  postvga=2
+b0 14EE 20;  ES4 pole_cap=2
+b0 14EF 00;  pole_cur_old=0, temp8
+b0 14F2 00;  spare1_0=0, SEL A, DFEclk use anareset
+b0 149E 0F; pd_use=00001111
+b0 145F 00; cdr fmin set
+b0 145E 10; cdr fmin set -4096
+b0 145D 00; cdr fmax set 
+b0 145C 04; cdr fmax set +1024
+b0 145B D1; cdr cicbw set2
+b0 149D 10; cdr use v4, debug sel=0
+
+End
+
+:01-07-10 USB3 Rx ANA ALL:
+
+include this "01 GSU Power Up and Initialisation" "01-07-01 USB3 UP Rx ANA"
+include this "01 GSU Power Up and Initialisation" "01-07-02 USB3 DP1 Rx ANA"
+include this "01 GSU Power Up and Initialisation" "01-07-03 USB3 DP2 Rx ANA"
+include this "01 GSU Power Up and Initialisation" "01-07-04 USB3 DP3 Rx ANA"
+include this "01 GSU Power Up and Initialisation" "01-07-05 USB3 DP4 Rx ANA"
+
+End
+
+
+:01-10 USB PHY ALL:
+
+include this "01 GSU Power Up and Initialisation" "01-01-03 ADC test"	; ADC initial to ch0
+include this "01 GSU Power Up and Initialisation" "01-05-10 USB2 Phy ALL"	; USB2 PHY 
+include this "01 GSU Power Up and Initialisation" "01-06-10 PIPE ANA ALL"		; USB3 PIPE ANA
+include this "01 GSU Power Up and Initialisation" "01-07-10 USB3 Rx ANA ALL"	; USB3 Rx PHY 
+
+
+; tx include in pipe ana all
+; include this "01 GSU Power Up and Initialisation" "01-08-10 USB3 Tx ANA ALL"	; USB3 Tx PHY 
+
+
+End
+
+
+
+; 
+; ====================NOTE::AVES BUG USE ALL====================
+; ========================POWERUP DONE==========================
+; 
+
+
+
+##02 HUB2 TEST##
+:02-01 HS_tx UP V2 PRBS:
+B0 09c8 08;  i2c_utmi_port0_sel
+B0 4720 82;  i2c_utm_man_en
+B0 4731 00;  i2c_prbs_tx_wr_num 512
+B0 4732 02;  i2c_prbs_tx_wr_num
+B0 4733 D0;  i2c_prbs_tx_period_num  2000
+B0 4734 07;  i2c_prbs_tx_period_num
+B0 4730 03;  prbs_gen_enable & prbs_gen_preset_en
+End
+
+:02-02 HS_tx DP1 V2 PRBS:
+B0 4820 82;  i2c_utm_man_en
+B0 4831 00;  i2c_prbs_tx_wr_num 512
+B0 4832 02;  i2c_prbs_tx_wr_num
+B0 4833 D0;  i2c_prbs_tx_period_num  2000
+B0 4834 07;  i2c_prbs_tx_period_num
+B0 4830 03;  prbs_gen_enable & prbs_gen_preset_en
+End
+
+:02-03 HS_tx DP2 V2 PRBS:
+B0 4920 82;  i2c_utm_man_en
+B0 4931 00;  i2c_prbs_tx_wr_num 512
+B0 4932 02;  i2c_prbs_tx_wr_num
+B0 4933 D0;  i2c_prbs_tx_period_num  2000
+B0 4934 07;  i2c_prbs_tx_period_num
+B0 4930 03;  prbs_gen_enable & prbs_gen_preset_en
+End
+
+:02-04 HS_tx DP3 V2 PRBS:
+B0 4a20 82;  i2c_utm_man_en
+B0 4a31 00;  i2c_prbs_tx_wr_num 512
+B0 4a32 02;  i2c_prbs_tx_wr_num
+B0 4a33 D0;  i2c_prbs_tx_period_num  2000
+B0 4a34 07;  i2c_prbs_tx_period_num
+B0 4a30 03;  prbs_gen_enable & prbs_gen_preset_en
+End
+
+:02-05 HS_tx DP4 V2 PRBS:
+B0 4b20 82;  i2c_utm_man_en
+B0 4b31 00;  i2c_prbs_tx_wr_num 512
+B0 4b32 02;  i2c_prbs_tx_wr_num
+B0 4b33 D0;  i2c_prbs_tx_period_num  2000
+B0 4b34 07;  i2c_prbs_tx_period_num
+B0 4b30 03;  prbs_gen_enable & prbs_gen_preset_en
+End
+
+:02-06 HS_rx UP V2 PRBS:
+B0 09c8 08;  i2c_utmi_port0_sel
+B0 4720 83;  i2c_utm_man_en
+B0 4730 0E;  prbs_check_clear & prbs_check_enable  &  prbs_gen_preset_en
+B0 4730 06;  prbs_check_clear & prbs_check_enable  &  prbs_gen_preset_en
+End
+
+:02-07 HS_rx DP1 V2 PRBS:
+B0 4820 83;  i2c_utm_man_en
+B0 4830 0E;  prbs_check_clear & prbs_check_enable  &  prbs_gen_preset_en
+B0 4830 06;  prbs_check_clear & prbs_check_enable  &  prbs_gen_preset_en
+End
+
+:02-08 HS_rx DP2 V2 PRBS:
+B0 4920 83;  i2c_utm_man_en
+B0 4930 0E;  prbs_check_clear & prbs_check_enable  &  prbs_gen_preset_en
+B0 4930 06;  prbs_check_clear & prbs_check_enable  &  prbs_gen_preset_en
+End
+
+:02-09 HS_rx DP3 V2 PRBS:
+B0 4a20 83;  i2c_utm_man_en
+B0 4a30 0E;  prbs_check_clear & prbs_check_enable  &  prbs_gen_preset_en
+B0 4a30 06;  prbs_check_clear & prbs_check_enable  &  prbs_gen_preset_en
+End
+
+:02-10 HS_rx DP4 V2 PRBS:
+B0 4b20 83;  i2c_utm_man_en
+B0 4b30 0E;  prbs_check_clear & prbs_check_enable  &  prbs_gen_preset_en
+B0 4b30 06;  prbs_check_clear & prbs_check_enable  &  prbs_gen_preset_en
+End
+
+
+:02-11 FS_tx DP1 PRBS:
+B0 4820 C6;  i2c_xcvrselect & i2c_termselect & i2c_utm_man_en
+B0 4821 13;  i2c_dm_pd & i2c_dp_pd & i2c_fslsserialmode
+B0 4840 03;  i2c_fs_prbs_en
+B0 4831 00;  i2c_prbs_tx_wr_num 512
+B0 4832 02;  i2c_prbs_tx_wr_num
+B0 4833 30;  i2c_prbs_tx_period_num  30000
+B0 4834 75;  i2c_prbs_tx_period_num
+B0 4830 03;  prbs_gen_enable & prbs_gen_preset_en
+End
+
+:02-12 FS_rx UP V2 PRBS:
+B0 09c8 08;  i2c_utmi_port0_sel
+B0 4720 C7;  i2c_xcvrselect & i2c_termselect & i2c_utm_man_en
+B0 4721 61;  i2c_dm_pd & i2c_dp_pd & i2c_fslsserialmode
+B0 4740 03;  i2c_fs_prbs_en
+B0 4730 0E;  prbs_check_clear & prbs_check_enable  &  prbs_gen_preset_en
+B0 4730 06;  prbs_check_clear & prbs_check_enable  &  prbs_gen_preset_en
+End
+
+:02-13 FS_rx DP1 PRBS:
+B0 4820 C7;  i2c_xcvrselect & i2c_termselect & i2c_utm_man_en
+B0 4821 61;  i2c_dm_pd & i2c_dp_pd & i2c_fslsserialmode
+B0 4840 03;  i2c_fs_prbs_en
+B0 4830 0E;  prbs_check_clear & prbs_check_enable  &  prbs_gen_preset_en
+B0 4830 06;  prbs_check_clear & prbs_check_enable  &  prbs_gen_preset_en
+End
+
+:02-14 FS_rx DP2 PRBS:
+B0 4920 C7;  i2c_xcvrselect & i2c_termselect & i2c_utm_man_en
+B0 4921 61;  i2c_dm_pd & i2c_dp_pd & i2c_fslsserialmode
+B0 4940 03;  i2c_fs_prbs_en
+B0 4930 0E;  prbs_check_clear & prbs_check_enable  &  prbs_gen_preset_en
+B0 4930 06;  prbs_check_clear & prbs_check_enable  &  prbs_gen_preset_en
+End
+
+:02-15 FS_rx DP3 V2 PRBS:
+B0 4a20 C7;  i2c_xcvrselect & i2c_termselect & i2c_utm_man_en
+B0 4a21 61;  i2c_dm_pd & i2c_dp_pd & i2c_fslsserialmode
+B0 4a40 03;  i2c_fs_prbs_en
+B0 4a30 0E;  prbs_check_clear & prbs_check_enable  &  prbs_gen_preset_en
+B0 4a30 06;  prbs_check_clear & prbs_check_enable  &  prbs_gen_preset_en
+End
+
+:02-16 FS_rx DP4 V2 PRBS:
+B0 4b20 C7;  i2c_xcvrselect & i2c_termselect & i2c_utm_man_en
+B0 4b21 61;  i2c_dm_pd & i2c_dp_pd & i2c_fslsserialmode
+B0 4b40 03;  i2c_fs_prbs_en
+B0 4b30 0E;  prbs_check_clear & prbs_check_enable  &  prbs_gen_preset_en
+B0 4b30 06;  prbs_check_clear & prbs_check_enable  &  prbs_gen_preset_en
+End
+
+:02-17 LS_tx DP1 PRBS:
+B0 4820 CA;  i2c_xcvrselect & i2c_termselect & i2c_utm_man_en
+B0 4821 13;  i2c_dm_pd & i2c_dp_pd & i2c_fslsserialmode
+B0 4840 01;  i2c_fsls_speed & i2c_fs_prbs_en
+B0 4831 08;  i2c_prbs_tx_wr_num 8
+B0 4832 00;  i2c_prbs_tx_wr_num
+B0 4833 B8;  i2c_prbs_tx_period_num  3000
+B0 4834 0B;  i2c_prbs_tx_period_num
+B0 4830 03;  prbs_gen_enable & prbs_gen_preset_en
+End
+
+
+:02-18 LS_rx UP V2 PRBS:
+B0 09c8 08;  i2c_utmi_port0_sel
+B0 4720 CB;  i2c_xcvrselect & i2c_termselect & i2c_utm_man_en
+B0 4721 0D;  i2c_dm_pu2 & i2c_dm_pu1 & i2c_fslsserialmode
+B0 4740 01;  i2c_fsls_speed & i2c_fs_prbs_en
+B0 4730 0E;  prbs_check_clear & prbs_check_enable  &  prbs_gen_preset_en
+B0 4730 06;  prbs_check_clear & prbs_check_enable  &  prbs_gen_preset_en
+End
+
+
+:02-19 LS_rx DP1 PRBS:
+B0 4820 CB;  i2c_xcvrselect & i2c_termselect & i2c_utm_man_en
+B0 4821 0D;  i2c_dm_pu2 & i2c_dm_pu1 & i2c_fslsserialmode
+B0 4840 01;  i2c_fsls_speed & i2c_fs_prbs_en
+B0 4830 0E;  prbs_check_clear & prbs_check_enable  &  prbs_gen_preset_en
+B0 4830 06;  prbs_check_clear & prbs_check_enable  &  prbs_gen_preset_en
+End
+
+
+
+
+##03 HUB_SS TEST##
+
+:03-01 PIPE-up Tx/Rx PRBS:
+b0 3107 c0; 
+b0 3107 c0; 
+b0 3107 c0; 
+b0 3107 c0; 
+b0 3106 ff; 
+b0 3106 ff; 
+b0 3106 ff; 
+b0 3106 ff; 
+b0 3106 ff; 
+b0 3106 ff; 
+b0 3106 ff; 
+b0 3106 ff; 
+b0 3106 ff; 
+b0 3106 ff; 
+b0 3106 ff; 
+b0 3106 ff; 
+b0 3106 ff; 
+b0 3106 ff; 
+b0 3106 ff; 
+b0 3106 ff; 
+b0 3105 4f; 
+b0 3105 4f; 
+b0 3105 4f; 
+b0 3105 4f; 
+b0 3105 4f; 
+b0 3105 4f; 
+b0 3105 4f; 
+b0 3105 4f; 
+b0 3105 4f; 
+b0 3105 4f; 
+b0 310a 10; 
+b0 3107 c0; 
+b0 3107 c0; 
+b0 3107 c0; 
+b0 3107 c0; 
+b0 310a 10; 
+b0 3108 80; 
+b0 3108 80; 
+b0 3108 80; 
+b0 3108 80; 
+b0 3108 80; 
+b0 3108 80; 
+b0 310a 10; 
+b0 3109 00; 
+b0 31e5 ff; 
+b0 31e5 ff; 
+b0 31e5 ff; 
+b0 31e5 ff; 
+b0 31e5 ff; 
+b0 31e5 ff; 
+b0 31e5 ff; 
+b0 31e5 ff; 
+b0 31ff 0e; 
+b0 31ff 0e; 
+b0 31e6 80; 
+b0 31e6 80; 
+b0 31ff 0e; 
+b0 31ff 0e; 
+b0 3119 c0; 
+b0 3119 80; 
+b0 3119 80; 
+b0 3119 80; 
+b0 311c 26; 
+b0 311c 26; 
+b0 3119 80; 
+b0 311e 00; 
+b0 310e 4f; 
+b0 310e 4f; 
+b0 310e 4f; 
+b0 310e 4f; 
+b0 310e 4f; 
+b0 310e 4f; 
+b0 310e 4f; 
+b0 310e 4f; 
+b0 310e 4f; 
+b0 310e 4f; 
+b0 310f 64; 
+b0 310f 64; 
+b0 310f 64; 
+b0 310f 64; 
+b0 310f 64; 
+b0 310e 4f; 
+b0 310e 4f; 
+b0 311e 00; 
+b0 311e 00; 
+b0 311e 08; 
+b0 311e 0c; 
+b0 311e 08; 
+b0 311e 00; 
+b0 3119 c0; 
+b0 310d 60; 
+b0 310d 60; 
+b0 310d 60; 
+b0 310d 60; 
+b0 3110 0c; 
+b0 3110 0c; 
+b0 3164 b0; 
+b0 3163 30; 
+b0 3163 30; 
+b0 3163 30; 
+b0 3164 b0; 
+b0 3164 b0; 
+b0 3163 20; 
+b0 3164 30; 
+b0 3164 b0; 
+b0 3164 30; 
+b0 3163 30; 
+b0 3164 b0; 
+b0 3163 20; 
+b0 3164 30; 
+b0 3164 b0; 
+b0 3164 30; 
+b0 3163 30; 
+b0 3164 b0; 
+End
+
+:03-02 PIPE-dp1 Tx/Rx PRBS:
+b0 3207 c0; 
+b0 3207 c0; 
+b0 3207 c0; 
+b0 3207 c0; 
+b0 3206 ff; 
+b0 3206 ff; 
+b0 3206 ff; 
+b0 3206 ff; 
+b0 3206 ff; 
+b0 3206 ff; 
+b0 3206 ff; 
+b0 3206 ff; 
+b0 3206 ff; 
+b0 3206 ff; 
+b0 3206 ff; 
+b0 3206 ff; 
+b0 3206 ff; 
+b0 3206 ff; 
+b0 3206 ff; 
+b0 3206 ff; 
+b0 3205 4f; 
+b0 3205 4f; 
+b0 3205 4f; 
+b0 3205 4f; 
+b0 3205 4f; 
+b0 3205 4f; 
+b0 3205 4f; 
+b0 3205 4f; 
+b0 3205 4f; 
+b0 3205 4f; 
+b0 320a 10; 
+b0 3207 c0; 
+b0 3207 c0; 
+b0 3207 c0; 
+b0 3207 c0; 
+b0 320a 10; 
+b0 3208 80; 
+b0 3208 80; 
+b0 3208 80; 
+b0 3208 80; 
+b0 3208 80; 
+b0 3208 80; 
+b0 320a 10; 
+b0 3209 00; 
+b0 32e5 ff; 
+b0 32e5 ff; 
+b0 32e5 ff; 
+b0 32e5 ff; 
+b0 32e5 ff; 
+b0 32e5 ff; 
+b0 32e5 ff; 
+b0 32e5 ff; 
+b0 32ff 0e; 
+b0 32ff 0e; 
+b0 32e6 80; 
+b0 32e6 80; 
+b0 32ff 0e; 
+b0 32ff 0e; 
+b0 3219 c0; 
+b0 3219 80; 
+b0 3219 80; 
+b0 3219 80; 
+b0 321c 26; 
+b0 321c 26; 
+b0 3219 80; 
+b0 321e 00; 
+b0 320e 4f; 
+b0 320e 4f; 
+b0 320e 4f; 
+b0 320e 4f; 
+b0 320e 4f; 
+b0 320e 4f; 
+b0 320e 4f; 
+b0 320e 4f; 
+b0 320e 4f; 
+b0 320e 4f; 
+b0 320f 64; 
+b0 320f 64; 
+b0 320f 64; 
+b0 320f 64; 
+b0 320f 64; 
+b0 320e 4f; 
+b0 320e 4f; 
+b0 321e 00; 
+b0 321e 00; 
+b0 321e 08; 
+b0 321e 0c; 
+b0 321e 08; 
+b0 321e 00; 
+b0 3219 c0; 
+b0 320d 60; 
+b0 320d 60; 
+b0 320d 60; 
+b0 320d 60; 
+b0 3210 0c; 
+b0 3210 0c; 
+b0 3264 b0; 
+b0 3263 30; 
+b0 3263 30; 
+b0 3263 30; 
+b0 3264 b0; 
+b0 3264 b0; 
+b0 3263 20; 
+b0 3264 30; 
+b0 3264 b0; 
+b0 3264 30; 
+b0 3263 30; 
+b0 3264 b0; 
+b0 3263 20; 
+b0 3264 30; 
+b0 3264 b0; 
+b0 3264 30; 
+b0 3263 30; 
+b0 3264 b0; 
+End
+
+:03-03 PIPE-dp2 Tx/Rx PRBS:
+b0 3307 c0; 
+b0 3307 c0; 
+b0 3307 c0; 
+b0 3307 c0; 
+b0 3306 ff; 
+b0 3306 ff; 
+b0 3306 ff; 
+b0 3306 ff; 
+b0 3306 ff; 
+b0 3306 ff; 
+b0 3306 ff; 
+b0 3306 ff; 
+b0 3306 ff; 
+b0 3306 ff; 
+b0 3306 ff; 
+b0 3306 ff; 
+b0 3306 ff; 
+b0 3306 ff; 
+b0 3306 ff; 
+b0 3306 ff; 
+b0 3305 4f; 
+b0 3305 4f; 
+b0 3305 4f; 
+b0 3305 4f; 
+b0 3305 4f; 
+b0 3305 4f; 
+b0 3305 4f; 
+b0 3305 4f; 
+b0 3305 4f; 
+b0 3305 4f; 
+b0 330a 10; 
+b0 3307 c0; 
+b0 3307 c0; 
+b0 3307 c0; 
+b0 3307 c0; 
+b0 330a 10; 
+b0 3308 80; 
+b0 3308 80; 
+b0 3308 80; 
+b0 3308 80; 
+b0 3308 80; 
+b0 3308 80; 
+b0 330a 10; 
+b0 3309 00; 
+b0 33e5 ff; 
+b0 33e5 ff; 
+b0 33e5 ff; 
+b0 33e5 ff; 
+b0 33e5 ff; 
+b0 33e5 ff; 
+b0 33e5 ff; 
+b0 33e5 ff; 
+b0 33ff 0e; 
+b0 33ff 0e; 
+b0 33e6 80; 
+b0 33e6 80; 
+b0 33ff 0e; 
+b0 33ff 0e; 
+b0 3319 c0; 
+b0 3319 80; 
+b0 3319 80; 
+b0 3319 80; 
+b0 331c 26; 
+b0 331c 26; 
+b0 3319 80; 
+b0 331e 00; 
+b0 330e 4f; 
+b0 330e 4f; 
+b0 330e 4f; 
+b0 330e 4f; 
+b0 330e 4f; 
+b0 330e 4f; 
+b0 330e 4f; 
+b0 330e 4f; 
+b0 330e 4f; 
+b0 330e 4f; 
+b0 330f 64; 
+b0 330f 64; 
+b0 330f 64; 
+b0 330f 64; 
+b0 330f 64; 
+b0 330e 4f; 
+b0 330e 4f; 
+b0 331e 00; 
+b0 331e 00; 
+b0 331e 08; 
+b0 331e 0c; 
+b0 331e 08; 
+b0 331e 00; 
+b0 3319 c0; 
+b0 330d 60; 
+b0 330d 60; 
+b0 330d 60; 
+b0 330d 60; 
+b0 3310 0c; 
+b0 3310 0c; 
+b0 3364 b0; 
+b0 3363 30; 
+b0 3363 30; 
+b0 3363 30; 
+b0 3364 b0; 
+b0 3364 b0; 
+b0 3363 20; 
+b0 3364 30; 
+b0 3364 b0; 
+b0 3364 30; 
+b0 3363 30; 
+b0 3364 b0; 
+b0 3363 20; 
+b0 3364 30; 
+b0 3364 b0; 
+b0 3364 30; 
+b0 3363 30; 
+b0 3364 b0; 
+End
+
+:03-04 PIPE-dp3 Tx/Rx PRBS:
+b0 3407 c0; 
+b0 3407 c0; 
+b0 3407 c0; 
+b0 3407 c0; 
+b0 3406 ff; 
+b0 3406 ff; 
+b0 3406 ff; 
+b0 3406 ff; 
+b0 3406 ff; 
+b0 3406 ff; 
+b0 3406 ff; 
+b0 3406 ff; 
+b0 3406 ff; 
+b0 3406 ff; 
+b0 3406 ff; 
+b0 3406 ff; 
+b0 3406 ff; 
+b0 3406 ff; 
+b0 3406 ff; 
+b0 3406 ff; 
+b0 3405 4f; 
+b0 3405 4f; 
+b0 3405 4f; 
+b0 3405 4f; 
+b0 3405 4f; 
+b0 3405 4f; 
+b0 3405 4f; 
+b0 3405 4f; 
+b0 3405 4f; 
+b0 3405 4f; 
+b0 340a 10; 
+b0 3407 c0; 
+b0 3407 c0; 
+b0 3407 c0; 
+b0 3407 c0; 
+b0 340a 10; 
+b0 3408 80; 
+b0 3408 80; 
+b0 3408 80; 
+b0 3408 80; 
+b0 3408 80; 
+b0 3408 80; 
+b0 340a 10; 
+b0 3409 00; 
+b0 34e5 ff; 
+b0 34e5 ff; 
+b0 34e5 ff; 
+b0 34e5 ff; 
+b0 34e5 ff; 
+b0 34e5 ff; 
+b0 34e5 ff; 
+b0 34e5 ff; 
+b0 34ff 0e; 
+b0 34ff 0e; 
+b0 34e6 80; 
+b0 34e6 80; 
+b0 34ff 0e; 
+b0 34ff 0e; 
+b0 3419 c0; 
+b0 3419 80; 
+b0 3419 80; 
+b0 3419 80; 
+b0 341c 26; 
+b0 341c 26; 
+b0 3419 80; 
+b0 341e 00; 
+b0 340e 4f; 
+b0 340e 4f; 
+b0 340e 4f; 
+b0 340e 4f; 
+b0 340e 4f; 
+b0 340e 4f; 
+b0 340e 4f; 
+b0 340e 4f; 
+b0 340e 4f; 
+b0 340e 4f; 
+b0 340f 64; 
+b0 340f 64; 
+b0 340f 64; 
+b0 340f 64; 
+b0 340f 64; 
+b0 340e 4f; 
+b0 340e 4f; 
+b0 341e 00; 
+b0 341e 00; 
+b0 341e 08; 
+b0 341e 0c; 
+b0 341e 08; 
+b0 341e 00; 
+b0 3419 c0; 
+b0 340d 60; 
+b0 340d 60; 
+b0 340d 60; 
+b0 340d 60; 
+b0 3410 0c; 
+b0 3410 0c; 
+b0 3464 b0; 
+b0 3463 30; 
+b0 3463 30; 
+b0 3463 30; 
+b0 3464 b0; 
+b0 3464 b0; 
+b0 3463 20; 
+b0 3464 30; 
+b0 3464 b0; 
+b0 3464 30; 
+b0 3463 30; 
+b0 3464 b0; 
+b0 3463 20; 
+b0 3464 30; 
+b0 3464 b0; 
+b0 3464 30; 
+b0 3463 30; 
+b0 3464 b0; 
+End
+
+:03-05 PIPE-dp4 Tx/Rx PRBS:
+b0 3507 c0; 
+b0 3507 c0; 
+b0 3507 c0; 
+b0 3507 c0; 
+b0 3506 ff; 
+b0 3506 ff; 
+b0 3506 ff; 
+b0 3506 ff; 
+b0 3506 ff; 
+b0 3506 ff; 
+b0 3506 ff; 
+b0 3506 ff; 
+b0 3506 ff; 
+b0 3506 ff; 
+b0 3506 ff; 
+b0 3506 ff; 
+b0 3506 ff; 
+b0 3506 ff; 
+b0 3506 ff; 
+b0 3506 ff; 
+b0 3505 4f; 
+b0 3505 4f; 
+b0 3505 4f; 
+b0 3505 4f; 
+b0 3505 4f; 
+b0 3505 4f; 
+b0 3505 4f; 
+b0 3505 4f; 
+b0 3505 4f; 
+b0 3505 4f; 
+b0 350a 10; 
+b0 3507 c0; 
+b0 3507 c0; 
+b0 3507 c0; 
+b0 3507 c0; 
+b0 350a 10; 
+b0 3508 80; 
+b0 3508 80; 
+b0 3508 80; 
+b0 3508 80; 
+b0 3508 80; 
+b0 3508 80; 
+b0 350a 10; 
+b0 3509 00; 
+b0 35e5 ff; 
+b0 35e5 ff; 
+b0 35e5 ff; 
+b0 35e5 ff; 
+b0 35e5 ff; 
+b0 35e5 ff; 
+b0 35e5 ff; 
+b0 35e5 ff; 
+b0 35ff 0e; 
+b0 35ff 0e; 
+b0 35e6 80; 
+b0 35e6 80; 
+b0 35ff 0e; 
+b0 35ff 0e; 
+b0 3519 c0; 
+b0 3519 80; 
+b0 3519 80; 
+b0 3519 80; 
+b0 351c 26; 
+b0 351c 26; 
+b0 3519 80; 
+b0 351e 00; 
+b0 350e 4f; 
+b0 350e 4f; 
+b0 350e 4f; 
+b0 350e 4f; 
+b0 350e 4f; 
+b0 350e 4f; 
+b0 350e 4f; 
+b0 350e 4f; 
+b0 350e 4f; 
+b0 350e 4f; 
+b0 350f 64; 
+b0 350f 64; 
+b0 350f 64; 
+b0 350f 64; 
+b0 350f 64; 
+b0 350e 4f; 
+b0 350e 4f; 
+b0 351e 00; 
+b0 351e 00; 
+b0 351e 08; 
+b0 351e 0c; 
+b0 351e 08; 
+b0 351e 00; 
+b0 3519 c0; 
+b0 350d 60; 
+b0 350d 60; 
+b0 350d 60; 
+b0 350d 60; 
+b0 3510 0c; 
+b0 3510 0c; 
+b0 3564 b0; 
+b0 3563 30; 
+b0 3563 30; 
+b0 3563 30; 
+b0 3564 b0; 
+b0 3564 b0; 
+b0 3563 20; 
+b0 3564 30; 
+b0 3564 b0; 
+b0 3564 30; 
+b0 3563 30; 
+b0 3564 b0; 
+b0 3563 20; 
+b0 3564 30; 
+b0 3564 b0; 
+b0 3564 30; 
+b0 3563 30; 
+b0 3564 b0; 
+End
+
+:03-06 PIPE-up Tx/Rx LFPS:
+b0 3107 40;
+b0 3107 c0;
+b0 3106 01;
+b0 3106 03;
+b0 3106 07;
+b0 3106 0f;
+b0 3106 1f;
+b0 3106 3f;
+b0 3106 7f;
+b0 3106 ff;
+b0 3105 01;
+b0 3105 03;
+b0 3105 07;
+b0 3105 0f;
+b0 3105 4f;
+b0 310a 10;
+b0 3107 c0;
+b0 3107 c0;
+b0 3107 c0;
+b0 3107 c0;
+b0 310a 10;
+b0 3108 80;
+b0 3108 80;
+b0 3108 80;
+b0 3108 80;
+b0 3108 80;
+b0 3108 80;
+b0 310a 10;
+b0 3109 00;
+b0 3107 c0;
+b0 31e5 20;
+b0 31e5 30;
+b0 31e5 38;
+b0 31e5 3c;
+b0 31e5 3e;
+b0 31e5 3f;
+b0 31e5 bf;
+b0 31e5 ff;
+b0 31ff 08;
+b0 31ff 0c;
+b0 31e6 80;
+b0 31e6 80;
+b0 31ff 0e;
+b0 31ff 0e;
+b0 31e6 80;
+b0 31e6 80;
+b0 3114 90;
+b0 3114 90;
+b0 3121 9f;
+b0 3122 ff;
+b0 3126 7f;
+b0 3127 fc;
+b0 3125 00;
+b0 3126 3f;
+b0 3123 00;
+b0 3124 fa;
+b0 3115 80;
+b0 3115 c0;
+b0 3113 04;
+b0 3113 04;
+b0 3114 90;
+b0 3114 90;
+b0 312c 00;
+b0 312c 00;
+b0 310e 01;
+b0 310e 03;
+b0 310e 07;
+b0 310e 0f;
+b0 310e 4f;
+b0 310f 00;
+b0 310f 40;
+b0 310f 60;
+b0 310f 70;
+b0 310f 70;
+b0 3114 d0;
+b0 31ff 0e;
+b0 31ff 0e;
+b0 3151 0d;
+b0 3151 00;
+b0 3152 4f;
+b0 3152 4f;
+b0 3153 ab;
+b0 3152 47;
+b0 3156 00;
+b0 3156 00;
+b0 3156 00;
+b0 314f 80;
+b0 314f c0;
+b0 3163 20;
+b0 3163 20;
+b0 310d 20;
+b0 310d 30;
+b0 310d 70;
+b0 3110 08;
+b0 3110 18;
+b0 3110 1c;
+b0 3163 30;
+End
+
+:03-07 PIPE-dp1 Tx/Rx LFPS:
+b0 3207 40;
+b0 3207 c0;
+b0 3206 01;
+b0 3206 03;
+b0 3206 07;
+b0 3206 0f;
+b0 3206 1f;
+b0 3206 3f;
+b0 3206 7f;
+b0 3206 ff;
+b0 3205 01;
+b0 3205 03;
+b0 3205 07;
+b0 3205 0f;
+b0 3205 4f;
+b0 320a 10;
+b0 3207 c0;
+b0 3207 c0;
+b0 3207 c0;
+b0 3207 c0;
+b0 320a 10;
+b0 3208 80;
+b0 3208 80;
+b0 3208 80;
+b0 3208 80;
+b0 3208 80;
+b0 3208 80;
+b0 320a 10;
+b0 3209 00;
+b0 3207 c0;
+b0 32e5 20;
+b0 32e5 30;
+b0 32e5 38;
+b0 32e5 3c;
+b0 32e5 3e;
+b0 32e5 3f;
+b0 32e5 bf;
+b0 32e5 ff;
+b0 32ff 08;
+b0 32ff 0c;
+b0 32e6 80;
+b0 32e6 80;
+b0 32ff 0e;
+b0 32ff 0e;
+b0 32e6 80;
+b0 32e6 80;
+b0 3214 90;
+b0 3214 90;
+b0 3221 9f;
+b0 3222 ff;
+b0 3226 7f;
+b0 3227 fc;
+b0 3225 00;
+b0 3226 3f;
+b0 3223 00;
+b0 3224 fa;
+b0 3215 80;
+b0 3215 c0;
+b0 3213 04;
+b0 3213 04;
+b0 3214 90;
+b0 3214 90;
+b0 322c 00;
+b0 322c 00;
+b0 320e 01;
+b0 320e 03;
+b0 320e 07;
+b0 320e 0f;
+b0 320e 4f;
+b0 320f 00;
+b0 320f 40;
+b0 320f 60;
+b0 320f 70;
+b0 320f 70;
+b0 3214 d0;
+b0 32ff 0e;
+b0 32ff 0e;
+b0 3251 0d;
+b0 3251 00;
+b0 3252 4f;
+b0 3252 4f;
+b0 3253 ab;
+b0 3252 47;
+b0 3256 00;
+b0 3256 00;
+b0 3256 00;
+b0 324f 80;
+b0 324f c0;
+b0 3263 20;
+b0 3263 20;
+b0 320d 20;
+b0 320d 30;
+b0 320d 70;
+b0 3210 08;
+b0 3210 18;
+b0 3210 1c;
+b0 3263 30;
+End
+
+:03-08 PIPE-dp2 Tx/Rx LFPS:
+b0 3307 40;
+b0 3307 c0;
+b0 3306 01;
+b0 3306 03;
+b0 3306 07;
+b0 3306 0f;
+b0 3306 1f;
+b0 3306 3f;
+b0 3306 7f;
+b0 3306 ff;
+b0 3305 01;
+b0 3305 03;
+b0 3305 07;
+b0 3305 0f;
+b0 3305 4f;
+b0 330a 10;
+b0 3307 c0;
+b0 3307 c0;
+b0 3307 c0;
+b0 3307 c0;
+b0 330a 10;
+b0 3308 80;
+b0 3308 80;
+b0 3308 80;
+b0 3308 80;
+b0 3308 80;
+b0 3308 80;
+b0 330a 10;
+b0 3309 00;
+b0 3307 c0;
+b0 33e5 20;
+b0 33e5 30;
+b0 33e5 38;
+b0 33e5 3c;
+b0 33e5 3e;
+b0 33e5 3f;
+b0 33e5 bf;
+b0 33e5 ff;
+b0 33ff 08;
+b0 33ff 0c;
+b0 33e6 80;
+b0 33e6 80;
+b0 33ff 0e;
+b0 33ff 0e;
+b0 33e6 80;
+b0 33e6 80;
+b0 3314 90;
+b0 3314 90;
+b0 3321 9f;
+b0 3322 ff;
+b0 3326 7f;
+b0 3327 fc;
+b0 3325 00;
+b0 3326 3f;
+b0 3323 00;
+b0 3324 fa;
+b0 3315 80;
+b0 3315 c0;
+b0 3313 04;
+b0 3313 04;
+b0 3314 90;
+b0 3314 90;
+b0 332c 00;
+b0 332c 00;
+b0 330e 01;
+b0 330e 03;
+b0 330e 07;
+b0 330e 0f;
+b0 330e 4f;
+b0 330f 00;
+b0 330f 40;
+b0 330f 60;
+b0 330f 70;
+b0 330f 70;
+b0 3314 d0;
+b0 33ff 0e;
+b0 33ff 0e;
+b0 3351 0d;
+b0 3351 00;
+b0 3352 4f;
+b0 3352 4f;
+b0 3353 ab;
+b0 3352 47;
+b0 3356 00;
+b0 3356 00;
+b0 3356 00;
+b0 334f 80;
+b0 334f c0;
+b0 3363 20;
+b0 3363 20;
+b0 330d 20;
+b0 330d 30;
+b0 330d 70;
+b0 3310 08;
+b0 3310 18;
+b0 3310 1c;
+b0 3363 30;
+End
+
+:03-09 PIPE-dp3 Tx/Rx LFPS:
+b0 3407 40;
+b0 3407 c0;
+b0 3406 01;
+b0 3406 03;
+b0 3406 07;
+b0 3406 0f;
+b0 3406 1f;
+b0 3406 3f;
+b0 3406 7f;
+b0 3406 ff;
+b0 3405 01;
+b0 3405 03;
+b0 3405 07;
+b0 3405 0f;
+b0 3405 4f;
+b0 340a 10;
+b0 3407 c0;
+b0 3407 c0;
+b0 3407 c0;
+b0 3407 c0;
+b0 340a 10;
+b0 3408 80;
+b0 3408 80;
+b0 3408 80;
+b0 3408 80;
+b0 3408 80;
+b0 3408 80;
+b0 340a 10;
+b0 3409 00;
+b0 3407 c0;
+b0 34e5 20;
+b0 34e5 30;
+b0 34e5 38;
+b0 34e5 3c;
+b0 34e5 3e;
+b0 34e5 3f;
+b0 34e5 bf;
+b0 34e5 ff;
+b0 34ff 08;
+b0 34ff 0c;
+b0 34e6 80;
+b0 34e6 80;
+b0 34ff 0e;
+b0 34ff 0e;
+b0 34e6 80;
+b0 34e6 80;
+b0 3414 90;
+b0 3414 90;
+b0 3421 9f;
+b0 3422 ff;
+b0 3426 7f;
+b0 3427 fc;
+b0 3425 00;
+b0 3426 3f;
+b0 3423 00;
+b0 3424 fa;
+b0 3415 80;
+b0 3415 c0;
+b0 3413 04;
+b0 3413 04;
+b0 3414 90;
+b0 3414 90;
+b0 342c 00;
+b0 342c 00;
+b0 340e 01;
+b0 340e 03;
+b0 340e 07;
+b0 340e 0f;
+b0 340e 4f;
+b0 340f 00;
+b0 340f 40;
+b0 340f 60;
+b0 340f 70;
+b0 340f 70;
+b0 3414 d0;
+b0 34ff 0e;
+b0 34ff 0e;
+b0 3451 0d;
+b0 3451 00;
+b0 3452 4f;
+b0 3452 4f;
+b0 3453 ab;
+b0 3452 47;
+b0 3456 00;
+b0 3456 00;
+b0 3456 00;
+b0 344f 80;
+b0 344f c0;
+b0 3463 20;
+b0 3463 20;
+b0 340d 20;
+b0 340d 30;
+b0 340d 70;
+b0 3410 08;
+b0 3410 18;
+b0 3410 1c;
+b0 3463 30;
+End
+
+:03-10 PIPE-dp4 Tx/Rx LFPS:
+b0 3507 40;
+b0 3507 c0;
+b0 3506 01;
+b0 3506 03;
+b0 3506 07;
+b0 3506 0f;
+b0 3506 1f;
+b0 3506 3f;
+b0 3506 7f;
+b0 3506 ff;
+b0 3505 01;
+b0 3505 03;
+b0 3505 07;
+b0 3505 0f;
+b0 3505 4f;
+b0 350a 10;
+b0 3507 c0;
+b0 3507 c0;
+b0 3507 c0;
+b0 3507 c0;
+b0 350a 10;
+b0 3508 80;
+b0 3508 80;
+b0 3508 80;
+b0 3508 80;
+b0 3508 80;
+b0 3508 80;
+b0 350a 10;
+b0 3509 00;
+b0 3507 c0;
+b0 35e5 20;
+b0 35e5 30;
+b0 35e5 38;
+b0 35e5 3c;
+b0 35e5 3e;
+b0 35e5 3f;
+b0 35e5 bf;
+b0 35e5 ff;
+b0 35ff 08;
+b0 35ff 0c;
+b0 35e6 80;
+b0 35e6 80;
+b0 35ff 0e;
+b0 35ff 0e;
+b0 35e6 80;
+b0 35e6 80;
+b0 3514 90;
+b0 3514 90;
+b0 3521 9f;
+b0 3522 ff;
+b0 3526 7f;
+b0 3527 fc;
+b0 3525 00;
+b0 3526 3f;
+b0 3523 00;
+b0 3524 fa;
+b0 3515 80;
+b0 3515 c0;
+b0 3513 04;
+b0 3513 04;
+b0 3514 90;
+b0 3514 90;
+b0 352c 00;
+b0 352c 00;
+b0 350e 01;
+b0 350e 03;
+b0 350e 07;
+b0 350e 0f;
+b0 350e 4f;
+b0 350f 00;
+b0 350f 40;
+b0 350f 60;
+b0 350f 70;
+b0 350f 70;
+b0 3514 d0;
+b0 35ff 0e;
+b0 35ff 0e;
+b0 3551 0d;
+b0 3551 00;
+b0 3552 4f;
+b0 3552 4f;
+b0 3553 ab;
+b0 3552 47;
+b0 3556 00;
+b0 3556 00;
+b0 3556 00;
+b0 354f 80;
+b0 354f c0;
+b0 3563 20;
+b0 3563 20;
+b0 350d 20;
+b0 350d 30;
+b0 350d 70;
+b0 3510 08;
+b0 3510 18;
+b0 3510 1c;
+b0 3563 30;
+End
+
+:03-11 PIPE-up Tx rxdetect:
+B0 3102 FF;  i2c_pipe_man_en[15:8]
+B0 3103 FF;  i2c_pipe_man_en[7:0]
+B0 3104 00;  i2c_pipe_man[25:24]
+B0 3105 00;  i2c_pipe_man[23:16]
+B0 3106 00;  i2c_pipe_man[15:8]
+B0 3107 07;  i2c_pipe_man[7:0],U0 tx lfps
+B0 310B FF;  i2c_ana_man_en[12:8]
+B0 310C 3F;  i2c_ana_man_en[7:0],rtl ctrl rxdetect
+B0 310D 08;  i2c_ana_man[12:8]
+B0 310E 00;  i2c_ana_man[7:0] only rx term en
+B0 3134 C3;  man start {i2c_clk_rxdet_man_en,i2c_clk_rxdet_man,i2c_rxdet_man_en,i2c_rxdet_man_vrxdet_en,i2c_rxdet_man_vrxdet_sel,i2c_rxdet_rst_man_en,i2c_rxdet_start_man_en,i2c_rxdet_start_man} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3],dataIn[2],dataIn[1],dataIn[0]}; 
+End
+
+:03-12 PIPE-dp1 Tx rxdetect:
+B0 3202 FF;  i2c_pipe_man_en[15:8]
+B0 3203 FF;  i2c_pipe_man_en[7:0]
+B0 3204 00;  i2c_pipe_man[25:24]
+B0 3205 00;  i2c_pipe_man[23:16]
+B0 3206 00;  i2c_pipe_man[15:8]
+B0 3207 07;  i2c_pipe_man[7:0],U0 tx lfps
+B0 320B FF;  i2c_ana_man_en[12:8]
+B0 320C 3F;  i2c_ana_man_en[7:0],rtl ctrl rxdetect
+B0 320D 08;  i2c_ana_man[12:8]
+B0 320E 00;  i2c_ana_man[7:0] only rx term en
+B0 3234 C3;  man start {i2c_clk_rxdet_man_en,i2c_clk_rxdet_man,i2c_rxdet_man_en,i2c_rxdet_man_vrxdet_en,i2c_rxdet_man_vrxdet_sel,i2c_rxdet_rst_man_en,i2c_rxdet_start_man_en,i2c_rxdet_start_man} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3],dataIn[2],dataIn[1],dataIn[0]}; 
+End
+
+:03-13 PIPE-dp2 Tx rxdetect:
+B0 3302 FF;  i2c_pipe_man_en[15:8]
+B0 3303 FF;  i2c_pipe_man_en[7:0]
+B0 3304 00;  i2c_pipe_man[25:24]
+B0 3305 00;  i2c_pipe_man[23:16]
+B0 3306 00;  i2c_pipe_man[15:8]
+B0 3307 07;  i2c_pipe_man[7:0],U0 tx lfps
+B0 330B FF;  i2c_ana_man_en[12:8]
+B0 330C 3F;  i2c_ana_man_en[7:0],rtl ctrl rxdetect
+B0 330D 08;  i2c_ana_man[12:8]
+B0 330E 00;  i2c_ana_man[7:0] only rx term en
+B0 3334 C3;  man start {i2c_clk_rxdet_man_en,i2c_clk_rxdet_man,i2c_rxdet_man_en,i2c_rxdet_man_vrxdet_en,i2c_rxdet_man_vrxdet_sel,i2c_rxdet_rst_man_en,i2c_rxdet_start_man_en,i2c_rxdet_start_man} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3],dataIn[2],dataIn[1],dataIn[0]}; 
+End
+
+:03-14 PIPE-dp3 Tx rxdetect:
+B0 3402 FF;  i2c_pipe_man_en[15:8]
+B0 3403 FF;  i2c_pipe_man_en[7:0]
+B0 3404 00;  i2c_pipe_man[25:24]
+B0 3405 00;  i2c_pipe_man[23:16]
+B0 3406 00;  i2c_pipe_man[15:8]
+B0 3407 07;  i2c_pipe_man[7:0],U0 tx lfps
+B0 340B FF;  i2c_ana_man_en[12:8]
+B0 340C 3F;  i2c_ana_man_en[7:0],rtl ctrl rxdetect
+B0 340D 08;  i2c_ana_man[12:8]
+B0 340E 00;  i2c_ana_man[7:0] only rx term en
+B0 3434 C3;  man start {i2c_clk_rxdet_man_en,i2c_clk_rxdet_man,i2c_rxdet_man_en,i2c_rxdet_man_vrxdet_en,i2c_rxdet_man_vrxdet_sel,i2c_rxdet_rst_man_en,i2c_rxdet_start_man_en,i2c_rxdet_start_man} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3],dataIn[2],dataIn[1],dataIn[0]}; 
+End
+
+:03-15 PIPE-dp4 Tx rxdetect:
+B0 3502 FF;  i2c_pipe_man_en[15:8]
+B0 3503 FF;  i2c_pipe_man_en[7:0]
+B0 3504 00;  i2c_pipe_man[25:24]
+B0 3505 00;  i2c_pipe_man[23:16]
+B0 3506 00;  i2c_pipe_man[15:8]
+B0 3507 07;  i2c_pipe_man[7:0],U0 tx lfps
+B0 350B FF;  i2c_ana_man_en[12:8]
+B0 350C 3F;  i2c_ana_man_en[7:0],rtl ctrl rxdetect
+B0 350D 08;  i2c_ana_man[12:8]
+B0 350E 00;  i2c_ana_man[7:0] only rx term en
+B0 3534 C3;  man start {i2c_clk_rxdet_man_en,i2c_clk_rxdet_man,i2c_rxdet_man_en,i2c_rxdet_man_vrxdet_en,i2c_rxdet_man_vrxdet_sel,i2c_rxdet_rst_man_en,i2c_rxdet_start_man_en,i2c_rxdet_start_man} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3],dataIn[2],dataIn[1],dataIn[0]}; 
+End
+
+:03-16 PIPE-up Tx/Rx 20b constant:
+B0 3102 FF;  i2c_pipe_man_en[15:8]
+B0 3103 FF;  i2c_pipe_man_en[7:0]
+B0 3104 00;  i2c_pipe_man[25:24]
+B0 3105 00;  i2c_pipe_man[23:16]
+B0 3106 00;  i2c_pipe_man[15:8]
+B0 3107 01;  i2c_pipe_man[7:0],U0 tx 20b
+B0 310B FF;  i2c_ana_man_en[12:8]
+B0 310C FF;  i2c_ana_man_en[7:0]
+B0 310D 0C;  i2c_ana_man[12:8]
+B0 310E 17;  i2c_ana_man[7:0] tx en,rx en
+B0 312F 80;  test en,sel constant,{i2c_tx_10b_test_en,i2c_tx_10b_test_sel[2],i2c_tx_10b_test_sel[1],i2c_tx_10b_test_sel[0],i2c_tx_10b_default_sel} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3]}; 
+B0 3119 02;  {i2c_clk_packet_8b_gen_man,i2c_tx_8b_test_packet_en,i2c_tx_8b_test_packet_max[10],i2c_tx_8b_test_packet_max[9],i2c_tx_8b_test_packet_max[8]} <= {dataIn[7],dataIn[6],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 311A AA;  CLK,01010,{i2c_tx_8b_test_packet_max[7],i2c_tx_8b_test_packet_max[6],i2c_tx_8b_test_packet_max[5],i2c_tx_8b_test_packet_max[4],i2c_tx_8b_test_packet_max[3],i2c_tx_8b_test_packet_max[2],i2c_tx_8b_test_packet_max[1],i2c_tx_8b_test_packet_max[0]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3],dataIn[2],dataIn[1],dataIn[0]}; 	
+End
+
+:03-17 PIPE-dp1 Tx/Rx 20b constant:
+B0 3202 FF;  i2c_pipe_man_en[15:8]
+B0 3203 FF;  i2c_pipe_man_en[7:0]
+B0 3204 00;  i2c_pipe_man[25:24]
+B0 3205 00;  i2c_pipe_man[23:16]
+B0 3206 00;  i2c_pipe_man[15:8]
+B0 3207 01;  i2c_pipe_man[7:0],U0 tx 20b
+B0 320B FF;  i2c_ana_man_en[12:8]
+B0 320C FF;  i2c_ana_man_en[7:0]
+B0 320D 0C;  i2c_ana_man[12:8]
+B0 320E 17;  i2c_ana_man[7:0] tx en,rx en
+B0 322F 80;  test en,sel constant,{i2c_tx_10b_test_en,i2c_tx_10b_test_sel[2],i2c_tx_10b_test_sel[1],i2c_tx_10b_test_sel[0],i2c_tx_10b_default_sel} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3]}; 
+B0 3219 02;  {i2c_clk_packet_8b_gen_man,i2c_tx_8b_test_packet_en,i2c_tx_8b_test_packet_max[10],i2c_tx_8b_test_packet_max[9],i2c_tx_8b_test_packet_max[8]} <= {dataIn[7],dataIn[6],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 321A AA;  CLK,01010,{i2c_tx_8b_test_packet_max[7],i2c_tx_8b_test_packet_max[6],i2c_tx_8b_test_packet_max[5],i2c_tx_8b_test_packet_max[4],i2c_tx_8b_test_packet_max[3],i2c_tx_8b_test_packet_max[2],i2c_tx_8b_test_packet_max[1],i2c_tx_8b_test_packet_max[0]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3],dataIn[2],dataIn[1],dataIn[0]}; 	
+End
+
+:03-18 PIPE-dp2 Tx/Rx 20b constant:
+B0 3302 FF;  i2c_pipe_man_en[15:8]
+B0 3303 FF;  i2c_pipe_man_en[7:0]
+B0 3304 00;  i2c_pipe_man[25:24]
+B0 3305 00;  i2c_pipe_man[23:16]
+B0 3306 00;  i2c_pipe_man[15:8]
+B0 3307 01;  i2c_pipe_man[7:0],U0 tx 20b
+B0 330B FF;  i2c_ana_man_en[12:8]
+B0 330C FF;  i2c_ana_man_en[7:0]
+B0 330D 0C;  i2c_ana_man[12:8]
+B0 330E 17;  i2c_ana_man[7:0] tx en,rx en
+B0 332F 80;  test en,sel constant,{i2c_tx_10b_test_en,i2c_tx_10b_test_sel[2],i2c_tx_10b_test_sel[1],i2c_tx_10b_test_sel[0],i2c_tx_10b_default_sel} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3]}; 
+B0 3319 02;  {i2c_clk_packet_8b_gen_man,i2c_tx_8b_test_packet_en,i2c_tx_8b_test_packet_max[10],i2c_tx_8b_test_packet_max[9],i2c_tx_8b_test_packet_max[8]} <= {dataIn[7],dataIn[6],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 331A AA;  CLK,01010,{i2c_tx_8b_test_packet_max[7],i2c_tx_8b_test_packet_max[6],i2c_tx_8b_test_packet_max[5],i2c_tx_8b_test_packet_max[4],i2c_tx_8b_test_packet_max[3],i2c_tx_8b_test_packet_max[2],i2c_tx_8b_test_packet_max[1],i2c_tx_8b_test_packet_max[0]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3],dataIn[2],dataIn[1],dataIn[0]}; 	
+End
+
+:03-19 PIPE-dp3 Tx/Rx 20b constant:
+B0 3402 FF;  i2c_pipe_man_en[15:8]
+B0 3403 FF;  i2c_pipe_man_en[7:0]
+B0 3404 00;  i2c_pipe_man[25:24]
+B0 3405 00;  i2c_pipe_man[23:16]
+B0 3406 00;  i2c_pipe_man[15:8]
+B0 3407 01;  i2c_pipe_man[7:0],U0 tx 20b
+B0 340B FF;  i2c_ana_man_en[12:8]
+B0 340C FF;  i2c_ana_man_en[7:0]
+B0 340D 0C;  i2c_ana_man[12:8]
+B0 340E 17;  i2c_ana_man[7:0] tx en,rx en
+B0 342F 80;  test en,sel constant,{i2c_tx_10b_test_en,i2c_tx_10b_test_sel[2],i2c_tx_10b_test_sel[1],i2c_tx_10b_test_sel[0],i2c_tx_10b_default_sel} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3]}; 
+B0 3419 02;  {i2c_clk_packet_8b_gen_man,i2c_tx_8b_test_packet_en,i2c_tx_8b_test_packet_max[10],i2c_tx_8b_test_packet_max[9],i2c_tx_8b_test_packet_max[8]} <= {dataIn[7],dataIn[6],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 341A AA;  CLK,01010,{i2c_tx_8b_test_packet_max[7],i2c_tx_8b_test_packet_max[6],i2c_tx_8b_test_packet_max[5],i2c_tx_8b_test_packet_max[4],i2c_tx_8b_test_packet_max[3],i2c_tx_8b_test_packet_max[2],i2c_tx_8b_test_packet_max[1],i2c_tx_8b_test_packet_max[0]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3],dataIn[2],dataIn[1],dataIn[0]}; 	
+End
+
+:03-20 PIPE-dp4 Tx/Rx 20b constant:
+B0 3502 FF;  i2c_pipe_man_en[15:8]
+B0 3503 FF;  i2c_pipe_man_en[7:0]
+B0 3504 00;  i2c_pipe_man[25:24]
+B0 3505 00;  i2c_pipe_man[23:16]
+B0 3506 00;  i2c_pipe_man[15:8]
+B0 3507 01;  i2c_pipe_man[7:0],U0 tx 20b
+B0 350B FF;  i2c_ana_man_en[12:8]
+B0 350C FF;  i2c_ana_man_en[7:0]
+B0 350D 0C;  i2c_ana_man[12:8]
+B0 350E 17;  i2c_ana_man[7:0] tx en,rx en
+B0 352F 80;  test en,sel constant,{i2c_tx_10b_test_en,i2c_tx_10b_test_sel[2],i2c_tx_10b_test_sel[1],i2c_tx_10b_test_sel[0],i2c_tx_10b_default_sel} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3]}; 
+B0 3519 02;  {i2c_clk_packet_8b_gen_man,i2c_tx_8b_test_packet_en,i2c_tx_8b_test_packet_max[10],i2c_tx_8b_test_packet_max[9],i2c_tx_8b_test_packet_max[8]} <= {dataIn[7],dataIn[6],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 351A AA;  CLK,01010,{i2c_tx_8b_test_packet_max[7],i2c_tx_8b_test_packet_max[6],i2c_tx_8b_test_packet_max[5],i2c_tx_8b_test_packet_max[4],i2c_tx_8b_test_packet_max[3],i2c_tx_8b_test_packet_max[2],i2c_tx_8b_test_packet_max[1],i2c_tx_8b_test_packet_max[0]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3],dataIn[2],dataIn[1],dataIn[0]}; 	
+End
+
+:03-21 PIPE-Up tx8b packet:
+B0 3102 FF;  i2c_pipe_man_en[15:8]
+B0 3103 FF;  i2c_pipe_man_en[7:0]
+B0 3104 00;  i2c_pipe_man[25:24]
+B0 3105 00;  i2c_pipe_man[23:16]
+B0 3106 00;  i2c_pipe_man[15:8]
+B0 3107 01;  i2c_pipe_man[7:0],U0 tx 20b
+B0 310B FF;  i2c_ana_man_en[12:8]
+B0 310C FF;  i2c_ana_man_en[7:0]
+B0 310D 0C;  i2c_ana_man[12:8]
+B0 310E 17;  i2c_ana_man[7:0] tx en,rx en
+B0 3119 C0;  {i2c_clk_packet_8b_gen_man,i2c_tx_8b_test_packet_en,i2c_tx_8b_test_packet_max[10],i2c_tx_8b_test_packet_max[9],i2c_tx_8b_test_packet_max[8]} <= {dataIn[7],dataIn[6],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 311A B5;  {i2c_tx_8b_test_packet_max[7],i2c_tx_8b_test_packet_max[6],i2c_tx_8b_test_packet_max[5],i2c_tx_8b_test_packet_max[4],i2c_tx_8b_test_packet_max[3],i2c_tx_8b_test_packet_max[2],i2c_tx_8b_test_packet_max[1],i2c_tx_8b_test_packet_max[0]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 311B 20;  {i2c_tx_8b_test_packet_com_num[3],i2c_tx_8b_test_packet_com_num[2],i2c_tx_8b_test_packet_com_num[1],i2c_tx_8b_test_packet_com_num[0],i2c_tx_8b_test_packet_com_time[10],i2c_tx_8b_test_packet_com_time[9],i2c_tx_8b_test_packet_com_time[8]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 311C 02;  {i2c_tx_8b_test_packet_com_time[7],i2c_tx_8b_test_packet_com_time[6],i2c_tx_8b_test_packet_com_time[5],i2c_tx_8b_test_packet_com_time[4],i2c_tx_8b_test_packet_com_time[3],i2c_tx_8b_test_packet_com_time[2],i2c_tx_8b_test_packet_com_time[1],i2c_tx_8b_test_packet_com_time[0]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 311D 20;  {i2c_tx_8b_test_packet_skp_num[3],i2c_tx_8b_test_packet_skp_num[2],i2c_tx_8b_test_packet_skp_num[1],i2c_tx_8b_test_packet_skp_num[0],i2c_tx_8b_test_packet_skp_time[10],i2c_tx_8b_test_packet_skp_time[9],i2c_tx_8b_test_packet_skp_time[8]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 311E AA;  {i2c_tx_8b_test_packet_skp_time[7],i2c_tx_8b_test_packet_skp_time[6],i2c_tx_8b_test_packet_skp_time[5],i2c_tx_8b_test_packet_skp_time[4],i2c_tx_8b_test_packet_skp_time[3],i2c_tx_8b_test_packet_skp_time[2],i2c_tx_8b_test_packet_skp_time[1],i2c_tx_8b_test_packet_skp_time[0]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 311F B0;  {i2c_tx_8b_test_en,i2c_tx_8b_test_sel[2],i2c_tx_8b_test_sel[1],i2c_tx_8b_test_sel[0]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4]}; 
+B0 31D1 C0;  {i2c_clk_packet_8b_pclk_check_man,i2c_rx_packet_8b_en,i2c_rx_packet_8b_err_cnt_clr} <= {dataIn[7],dataIn[6],dataIn[5]}; 
+B0 31D2 00;  {i2c_rx_packet_8b_max[10],i2c_rx_packet_8b_max[9],i2c_rx_packet_8b_max[8]} <= {dataIn[2],dataIn[1],dataIn[0]}; 
+B0 31D3 B5;  {i2c_rx_packet_8b_max[7],i2c_rx_packet_8b_max[6],i2c_rx_packet_8b_max[5],i2c_rx_packet_8b_max[4],i2c_rx_packet_8b_max[3],i2c_rx_packet_8b_max[2],i2c_rx_packet_8b_max[1],i2c_rx_packet_8b_max[0]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 31D4 20;  {i2c_rx_packet_8b_com_num[3],i2c_rx_packet_8b_com_num[2],i2c_rx_packet_8b_com_num[1],i2c_rx_packet_8b_com_num[0],i2c_rx_packet_8b_com_time[10],i2c_rx_packet_8b_com_time[9],i2c_rx_packet_8b_com_time[8]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 31D5 02;  {i2c_rx_packet_8b_com_time[7],i2c_rx_packet_8b_com_time[6],i2c_rx_packet_8b_com_time[5],i2c_rx_packet_8b_com_time[4],i2c_rx_packet_8b_com_time[3],i2c_rx_packet_8b_com_time[2],i2c_rx_packet_8b_com_time[1],i2c_rx_packet_8b_com_time[0]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3],dataIn[2],dataIn[1],dataIn[0]}; 
+End
+
+:03-22 PIPE-dp1 tx8b packet:
+B0 3202 FF;  i2c_pipe_man_en[15:8]
+B0 3203 FF;  i2c_pipe_man_en[7:0]
+B0 3204 00;  i2c_pipe_man[25:24]
+B0 3205 00;  i2c_pipe_man[23:16]
+B0 3206 00;  i2c_pipe_man[15:8]
+B0 3207 01;  i2c_pipe_man[7:0],U0 tx 20b
+B0 320B FF;  i2c_ana_man_en[12:8]
+B0 320C FF;  i2c_ana_man_en[7:0]
+B0 320D 0C;  i2c_ana_man[12:8]
+B0 320E 17;  i2c_ana_man[7:0] tx en,rx en
+B0 3219 C0;  {i2c_clk_packet_8b_gen_man,i2c_tx_8b_test_packet_en,i2c_tx_8b_test_packet_max[10],i2c_tx_8b_test_packet_max[9],i2c_tx_8b_test_packet_max[8]} <= {dataIn[7],dataIn[6],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 321A B5;  {i2c_tx_8b_test_packet_max[7],i2c_tx_8b_test_packet_max[6],i2c_tx_8b_test_packet_max[5],i2c_tx_8b_test_packet_max[4],i2c_tx_8b_test_packet_max[3],i2c_tx_8b_test_packet_max[2],i2c_tx_8b_test_packet_max[1],i2c_tx_8b_test_packet_max[0]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 321B 20;  {i2c_tx_8b_test_packet_com_num[3],i2c_tx_8b_test_packet_com_num[2],i2c_tx_8b_test_packet_com_num[1],i2c_tx_8b_test_packet_com_num[0],i2c_tx_8b_test_packet_com_time[10],i2c_tx_8b_test_packet_com_time[9],i2c_tx_8b_test_packet_com_time[8]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 321C 02;  {i2c_tx_8b_test_packet_com_time[7],i2c_tx_8b_test_packet_com_time[6],i2c_tx_8b_test_packet_com_time[5],i2c_tx_8b_test_packet_com_time[4],i2c_tx_8b_test_packet_com_time[3],i2c_tx_8b_test_packet_com_time[2],i2c_tx_8b_test_packet_com_time[1],i2c_tx_8b_test_packet_com_time[0]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 321D 20;  {i2c_tx_8b_test_packet_skp_num[3],i2c_tx_8b_test_packet_skp_num[2],i2c_tx_8b_test_packet_skp_num[1],i2c_tx_8b_test_packet_skp_num[0],i2c_tx_8b_test_packet_skp_time[10],i2c_tx_8b_test_packet_skp_time[9],i2c_tx_8b_test_packet_skp_time[8]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 321E AA;  {i2c_tx_8b_test_packet_skp_time[7],i2c_tx_8b_test_packet_skp_time[6],i2c_tx_8b_test_packet_skp_time[5],i2c_tx_8b_test_packet_skp_time[4],i2c_tx_8b_test_packet_skp_time[3],i2c_tx_8b_test_packet_skp_time[2],i2c_tx_8b_test_packet_skp_time[1],i2c_tx_8b_test_packet_skp_time[0]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 321F B0;  {i2c_tx_8b_test_en,i2c_tx_8b_test_sel[2],i2c_tx_8b_test_sel[1],i2c_tx_8b_test_sel[0]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4]}; 
+B0 32D1 C0;  {i2c_clk_packet_8b_pclk_check_man,i2c_rx_packet_8b_en,i2c_rx_packet_8b_err_cnt_clr} <= {dataIn[7],dataIn[6],dataIn[5]}; 
+B0 32D2 00;  {i2c_rx_packet_8b_max[10],i2c_rx_packet_8b_max[9],i2c_rx_packet_8b_max[8]} <= {dataIn[2],dataIn[1],dataIn[0]}; 
+B0 32D3 B5;  {i2c_rx_packet_8b_max[7],i2c_rx_packet_8b_max[6],i2c_rx_packet_8b_max[5],i2c_rx_packet_8b_max[4],i2c_rx_packet_8b_max[3],i2c_rx_packet_8b_max[2],i2c_rx_packet_8b_max[1],i2c_rx_packet_8b_max[0]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 32D4 20;  {i2c_rx_packet_8b_com_num[3],i2c_rx_packet_8b_com_num[2],i2c_rx_packet_8b_com_num[1],i2c_rx_packet_8b_com_num[0],i2c_rx_packet_8b_com_time[10],i2c_rx_packet_8b_com_time[9],i2c_rx_packet_8b_com_time[8]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 32D5 02;  {i2c_rx_packet_8b_com_time[7],i2c_rx_packet_8b_com_time[6],i2c_rx_packet_8b_com_time[5],i2c_rx_packet_8b_com_time[4],i2c_rx_packet_8b_com_time[3],i2c_rx_packet_8b_com_time[2],i2c_rx_packet_8b_com_time[1],i2c_rx_packet_8b_com_time[0]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3],dataIn[2],dataIn[1],dataIn[0]}; 
+End
+
+:03-23 PIPE-dp2 tx8b packet:
+B0 3302 FF;  i2c_pipe_man_en[15:8]
+B0 3303 FF;  i2c_pipe_man_en[7:0]
+B0 3304 00;  i2c_pipe_man[25:24]
+B0 3305 00;  i2c_pipe_man[23:16]
+B0 3306 00;  i2c_pipe_man[15:8]
+B0 3307 01;  i2c_pipe_man[7:0],U0 tx 20b
+B0 330B FF;  i2c_ana_man_en[12:8]
+B0 330C FF;  i2c_ana_man_en[7:0]
+B0 330D 0C;  i2c_ana_man[12:8]
+B0 330E 17;  i2c_ana_man[7:0] tx en,rx en
+B0 3319 C0;  {i2c_clk_packet_8b_gen_man,i2c_tx_8b_test_packet_en,i2c_tx_8b_test_packet_max[10],i2c_tx_8b_test_packet_max[9],i2c_tx_8b_test_packet_max[8]} <= {dataIn[7],dataIn[6],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 331A B5;  {i2c_tx_8b_test_packet_max[7],i2c_tx_8b_test_packet_max[6],i2c_tx_8b_test_packet_max[5],i2c_tx_8b_test_packet_max[4],i2c_tx_8b_test_packet_max[3],i2c_tx_8b_test_packet_max[2],i2c_tx_8b_test_packet_max[1],i2c_tx_8b_test_packet_max[0]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 331B 20;  {i2c_tx_8b_test_packet_com_num[3],i2c_tx_8b_test_packet_com_num[2],i2c_tx_8b_test_packet_com_num[1],i2c_tx_8b_test_packet_com_num[0],i2c_tx_8b_test_packet_com_time[10],i2c_tx_8b_test_packet_com_time[9],i2c_tx_8b_test_packet_com_time[8]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 331C 02;  {i2c_tx_8b_test_packet_com_time[7],i2c_tx_8b_test_packet_com_time[6],i2c_tx_8b_test_packet_com_time[5],i2c_tx_8b_test_packet_com_time[4],i2c_tx_8b_test_packet_com_time[3],i2c_tx_8b_test_packet_com_time[2],i2c_tx_8b_test_packet_com_time[1],i2c_tx_8b_test_packet_com_time[0]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 331D 20;  {i2c_tx_8b_test_packet_skp_num[3],i2c_tx_8b_test_packet_skp_num[2],i2c_tx_8b_test_packet_skp_num[1],i2c_tx_8b_test_packet_skp_num[0],i2c_tx_8b_test_packet_skp_time[10],i2c_tx_8b_test_packet_skp_time[9],i2c_tx_8b_test_packet_skp_time[8]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 331E AA;  {i2c_tx_8b_test_packet_skp_time[7],i2c_tx_8b_test_packet_skp_time[6],i2c_tx_8b_test_packet_skp_time[5],i2c_tx_8b_test_packet_skp_time[4],i2c_tx_8b_test_packet_skp_time[3],i2c_tx_8b_test_packet_skp_time[2],i2c_tx_8b_test_packet_skp_time[1],i2c_tx_8b_test_packet_skp_time[0]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 331F B0;  {i2c_tx_8b_test_en,i2c_tx_8b_test_sel[2],i2c_tx_8b_test_sel[1],i2c_tx_8b_test_sel[0]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4]}; 
+B0 33D1 C0;  {i2c_clk_packet_8b_pclk_check_man,i2c_rx_packet_8b_en,i2c_rx_packet_8b_err_cnt_clr} <= {dataIn[7],dataIn[6],dataIn[5]}; 
+B0 33D2 00;  {i2c_rx_packet_8b_max[10],i2c_rx_packet_8b_max[9],i2c_rx_packet_8b_max[8]} <= {dataIn[2],dataIn[1],dataIn[0]}; 
+B0 33D3 B5;  {i2c_rx_packet_8b_max[7],i2c_rx_packet_8b_max[6],i2c_rx_packet_8b_max[5],i2c_rx_packet_8b_max[4],i2c_rx_packet_8b_max[3],i2c_rx_packet_8b_max[2],i2c_rx_packet_8b_max[1],i2c_rx_packet_8b_max[0]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 33D4 20;  {i2c_rx_packet_8b_com_num[3],i2c_rx_packet_8b_com_num[2],i2c_rx_packet_8b_com_num[1],i2c_rx_packet_8b_com_num[0],i2c_rx_packet_8b_com_time[10],i2c_rx_packet_8b_com_time[9],i2c_rx_packet_8b_com_time[8]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 33D5 02;  {i2c_rx_packet_8b_com_time[7],i2c_rx_packet_8b_com_time[6],i2c_rx_packet_8b_com_time[5],i2c_rx_packet_8b_com_time[4],i2c_rx_packet_8b_com_time[3],i2c_rx_packet_8b_com_time[2],i2c_rx_packet_8b_com_time[1],i2c_rx_packet_8b_com_time[0]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3],dataIn[2],dataIn[1],dataIn[0]}; 
+End
+
+:03-24 PIPE-dp3 tx8b packet:
+B0 3402 FF;  i2c_pipe_man_en[15:8]
+B0 3403 FF;  i2c_pipe_man_en[7:0]
+B0 3404 00;  i2c_pipe_man[25:24]
+B0 3405 00;  i2c_pipe_man[23:16]
+B0 3406 00;  i2c_pipe_man[15:8]
+B0 3407 01;  i2c_pipe_man[7:0],U0 tx 20b
+B0 340B FF;  i2c_ana_man_en[12:8]
+B0 340C FF;  i2c_ana_man_en[7:0]
+B0 340D 0C;  i2c_ana_man[12:8]
+B0 340E 17;  i2c_ana_man[7:0] tx en,rx en
+B0 3419 C0;  {i2c_clk_packet_8b_gen_man,i2c_tx_8b_test_packet_en,i2c_tx_8b_test_packet_max[10],i2c_tx_8b_test_packet_max[9],i2c_tx_8b_test_packet_max[8]} <= {dataIn[7],dataIn[6],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 341A B5;  {i2c_tx_8b_test_packet_max[7],i2c_tx_8b_test_packet_max[6],i2c_tx_8b_test_packet_max[5],i2c_tx_8b_test_packet_max[4],i2c_tx_8b_test_packet_max[3],i2c_tx_8b_test_packet_max[2],i2c_tx_8b_test_packet_max[1],i2c_tx_8b_test_packet_max[0]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 341B 20;  {i2c_tx_8b_test_packet_com_num[3],i2c_tx_8b_test_packet_com_num[2],i2c_tx_8b_test_packet_com_num[1],i2c_tx_8b_test_packet_com_num[0],i2c_tx_8b_test_packet_com_time[10],i2c_tx_8b_test_packet_com_time[9],i2c_tx_8b_test_packet_com_time[8]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 341C 02;  {i2c_tx_8b_test_packet_com_time[7],i2c_tx_8b_test_packet_com_time[6],i2c_tx_8b_test_packet_com_time[5],i2c_tx_8b_test_packet_com_time[4],i2c_tx_8b_test_packet_com_time[3],i2c_tx_8b_test_packet_com_time[2],i2c_tx_8b_test_packet_com_time[1],i2c_tx_8b_test_packet_com_time[0]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 341D 20;  {i2c_tx_8b_test_packet_skp_num[3],i2c_tx_8b_test_packet_skp_num[2],i2c_tx_8b_test_packet_skp_num[1],i2c_tx_8b_test_packet_skp_num[0],i2c_tx_8b_test_packet_skp_time[10],i2c_tx_8b_test_packet_skp_time[9],i2c_tx_8b_test_packet_skp_time[8]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 341E AA;  {i2c_tx_8b_test_packet_skp_time[7],i2c_tx_8b_test_packet_skp_time[6],i2c_tx_8b_test_packet_skp_time[5],i2c_tx_8b_test_packet_skp_time[4],i2c_tx_8b_test_packet_skp_time[3],i2c_tx_8b_test_packet_skp_time[2],i2c_tx_8b_test_packet_skp_time[1],i2c_tx_8b_test_packet_skp_time[0]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 341F B0;  {i2c_tx_8b_test_en,i2c_tx_8b_test_sel[2],i2c_tx_8b_test_sel[1],i2c_tx_8b_test_sel[0]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4]}; 
+B0 34D1 C0;  {i2c_clk_packet_8b_pclk_check_man,i2c_rx_packet_8b_en,i2c_rx_packet_8b_err_cnt_clr} <= {dataIn[7],dataIn[6],dataIn[5]}; 
+B0 34D2 00;  {i2c_rx_packet_8b_max[10],i2c_rx_packet_8b_max[9],i2c_rx_packet_8b_max[8]} <= {dataIn[2],dataIn[1],dataIn[0]}; 
+B0 34D3 B5;  {i2c_rx_packet_8b_max[7],i2c_rx_packet_8b_max[6],i2c_rx_packet_8b_max[5],i2c_rx_packet_8b_max[4],i2c_rx_packet_8b_max[3],i2c_rx_packet_8b_max[2],i2c_rx_packet_8b_max[1],i2c_rx_packet_8b_max[0]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 34D4 20;  {i2c_rx_packet_8b_com_num[3],i2c_rx_packet_8b_com_num[2],i2c_rx_packet_8b_com_num[1],i2c_rx_packet_8b_com_num[0],i2c_rx_packet_8b_com_time[10],i2c_rx_packet_8b_com_time[9],i2c_rx_packet_8b_com_time[8]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 34D5 02;  {i2c_rx_packet_8b_com_time[7],i2c_rx_packet_8b_com_time[6],i2c_rx_packet_8b_com_time[5],i2c_rx_packet_8b_com_time[4],i2c_rx_packet_8b_com_time[3],i2c_rx_packet_8b_com_time[2],i2c_rx_packet_8b_com_time[1],i2c_rx_packet_8b_com_time[0]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3],dataIn[2],dataIn[1],dataIn[0]}; 
+End
+
+:03-25 PIPE-dp4 tx8b packet:
+B0 3502 FF;  i2c_pipe_man_en[15:8]
+B0 3503 FF;  i2c_pipe_man_en[7:0]
+B0 3504 00;  i2c_pipe_man[25:24]
+B0 3505 00;  i2c_pipe_man[23:16]
+B0 3506 00;  i2c_pipe_man[15:8]
+B0 3507 01;  i2c_pipe_man[7:0],U0 tx 20b
+B0 350B FF;  i2c_ana_man_en[12:8]
+B0 350C FF;  i2c_ana_man_en[7:0]
+B0 350D 0C;  i2c_ana_man[12:8]
+B0 350E 17;  i2c_ana_man[7:0] tx en,rx en
+B0 3519 C0;  {i2c_clk_packet_8b_gen_man,i2c_tx_8b_test_packet_en,i2c_tx_8b_test_packet_max[10],i2c_tx_8b_test_packet_max[9],i2c_tx_8b_test_packet_max[8]} <= {dataIn[7],dataIn[6],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 351A B5;  {i2c_tx_8b_test_packet_max[7],i2c_tx_8b_test_packet_max[6],i2c_tx_8b_test_packet_max[5],i2c_tx_8b_test_packet_max[4],i2c_tx_8b_test_packet_max[3],i2c_tx_8b_test_packet_max[2],i2c_tx_8b_test_packet_max[1],i2c_tx_8b_test_packet_max[0]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 351B 20;  {i2c_tx_8b_test_packet_com_num[3],i2c_tx_8b_test_packet_com_num[2],i2c_tx_8b_test_packet_com_num[1],i2c_tx_8b_test_packet_com_num[0],i2c_tx_8b_test_packet_com_time[10],i2c_tx_8b_test_packet_com_time[9],i2c_tx_8b_test_packet_com_time[8]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 351C 02;  {i2c_tx_8b_test_packet_com_time[7],i2c_tx_8b_test_packet_com_time[6],i2c_tx_8b_test_packet_com_time[5],i2c_tx_8b_test_packet_com_time[4],i2c_tx_8b_test_packet_com_time[3],i2c_tx_8b_test_packet_com_time[2],i2c_tx_8b_test_packet_com_time[1],i2c_tx_8b_test_packet_com_time[0]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 351D 20;  {i2c_tx_8b_test_packet_skp_num[3],i2c_tx_8b_test_packet_skp_num[2],i2c_tx_8b_test_packet_skp_num[1],i2c_tx_8b_test_packet_skp_num[0],i2c_tx_8b_test_packet_skp_time[10],i2c_tx_8b_test_packet_skp_time[9],i2c_tx_8b_test_packet_skp_time[8]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 351E AA;  {i2c_tx_8b_test_packet_skp_time[7],i2c_tx_8b_test_packet_skp_time[6],i2c_tx_8b_test_packet_skp_time[5],i2c_tx_8b_test_packet_skp_time[4],i2c_tx_8b_test_packet_skp_time[3],i2c_tx_8b_test_packet_skp_time[2],i2c_tx_8b_test_packet_skp_time[1],i2c_tx_8b_test_packet_skp_time[0]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 351F B0;  {i2c_tx_8b_test_en,i2c_tx_8b_test_sel[2],i2c_tx_8b_test_sel[1],i2c_tx_8b_test_sel[0]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4]}; 
+B0 35D1 C0;  {i2c_clk_packet_8b_pclk_check_man,i2c_rx_packet_8b_en,i2c_rx_packet_8b_err_cnt_clr} <= {dataIn[7],dataIn[6],dataIn[5]}; 
+B0 35D2 00;  {i2c_rx_packet_8b_max[10],i2c_rx_packet_8b_max[9],i2c_rx_packet_8b_max[8]} <= {dataIn[2],dataIn[1],dataIn[0]}; 
+B0 35D3 B5;  {i2c_rx_packet_8b_max[7],i2c_rx_packet_8b_max[6],i2c_rx_packet_8b_max[5],i2c_rx_packet_8b_max[4],i2c_rx_packet_8b_max[3],i2c_rx_packet_8b_max[2],i2c_rx_packet_8b_max[1],i2c_rx_packet_8b_max[0]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 35D4 20;  {i2c_rx_packet_8b_com_num[3],i2c_rx_packet_8b_com_num[2],i2c_rx_packet_8b_com_num[1],i2c_rx_packet_8b_com_num[0],i2c_rx_packet_8b_com_time[10],i2c_rx_packet_8b_com_time[9],i2c_rx_packet_8b_com_time[8]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[2],dataIn[1],dataIn[0]}; 
+B0 35D5 02;  {i2c_rx_packet_8b_com_time[7],i2c_rx_packet_8b_com_time[6],i2c_rx_packet_8b_com_time[5],i2c_rx_packet_8b_com_time[4],i2c_rx_packet_8b_com_time[3],i2c_rx_packet_8b_com_time[2],i2c_rx_packet_8b_com_time[1],i2c_rx_packet_8b_com_time[0]} <= {dataIn[7],dataIn[6],dataIn[5],dataIn[4],dataIn[3],dataIn[2],dataIn[1],dataIn[0]}; 
+End
+
+:03-26 PIPE-up tx tseq:
+B0 3102 FF;  i2c_pipe_man_en[15:8]
+B0 3103 FF;  i2c_pipe_man_en[7:0]
+B0 3104 00;  i2c_pipe_man[25:24]
+B0 3105 00;  i2c_pipe_man[23:16]
+B0 3106 00;  i2c_pipe_man[15:8]
+B0 3107 01;  i2c_pipe_man[7:0],U0 tx 20b
+B0 310B FF;  i2c_ana_man_en[12:8]
+B0 310C FF;  i2c_ana_man_en[7:0]
+B0 310D 0C;  i2c_ana_man[12:8]
+B0 310E 17;  i2c_ana_man[7:0] tx en,rx en
+B0 3117 C0;  man en
+B0 311F 90;  tx tseq
+End
+
+:03-27 PIPE-dp1 tx tseq:
+B0 3202 FF;  i2c_pipe_man_en[15:8]
+B0 3203 FF;  i2c_pipe_man_en[7:0]
+B0 3204 00;  i2c_pipe_man[25:24]
+B0 3205 00;  i2c_pipe_man[23:16]
+B0 3206 00;  i2c_pipe_man[15:8]
+B0 3207 01;  i2c_pipe_man[7:0],U0 tx 20b
+B0 320B FF;  i2c_ana_man_en[12:8]
+B0 320C FF;  i2c_ana_man_en[7:0]
+B0 320D 0C;  i2c_ana_man[12:8]
+B0 320E 17;  i2c_ana_man[7:0] tx en,rx en
+B0 3217 C0;  man en
+B0 321F 90;  tx tseq
+End
+
+:03-28 PIPE-dp2 tx tseq:
+B0 3302 FF;  i2c_pipe_man_en[15:8]
+B0 3303 FF;  i2c_pipe_man_en[7:0]
+B0 3304 00;  i2c_pipe_man[25:24]
+B0 3305 00;  i2c_pipe_man[23:16]
+B0 3306 00;  i2c_pipe_man[15:8]
+B0 3307 01;  i2c_pipe_man[7:0],U0 tx 20b
+B0 330B FF;  i2c_ana_man_en[12:8]
+B0 330C FF;  i2c_ana_man_en[7:0]
+B0 330D 0C;  i2c_ana_man[12:8]
+B0 330E 17;  i2c_ana_man[7:0] tx en,rx en
+B0 3317 C0;  man en
+B0 331F 90;  tx tseq
+End
+
+:03-29 PIPE-dp3 tx tseq:
+B0 3402 FF;  i2c_pipe_man_en[15:8]
+B0 3403 FF;  i2c_pipe_man_en[7:0]
+B0 3404 00;  i2c_pipe_man[25:24]
+B0 3405 00;  i2c_pipe_man[23:16]
+B0 3406 00;  i2c_pipe_man[15:8]
+B0 3407 01;  i2c_pipe_man[7:0],U0 tx 20b
+B0 340B FF;  i2c_ana_man_en[12:8]
+B0 340C FF;  i2c_ana_man_en[7:0]
+B0 340D 0C;  i2c_ana_man[12:8]
+B0 340E 17;  i2c_ana_man[7:0] tx en,rx en
+B0 3417 C0;  man en
+B0 341F 90;  tx tseq
+End
+
+:03-30 PIPE-dp4 tx tseq:
+B0 3502 FF;  i2c_pipe_man_en[15:8]
+B0 3503 FF;  i2c_pipe_man_en[7:0]
+B0 3504 00;  i2c_pipe_man[25:24]
+B0 3505 00;  i2c_pipe_man[23:16]
+B0 3506 00;  i2c_pipe_man[15:8]
+B0 3507 01;  i2c_pipe_man[7:0],U0 tx 20b
+B0 350B FF;  i2c_ana_man_en[12:8]
+B0 350C FF;  i2c_ana_man_en[7:0]
+B0 350D 0C;  i2c_ana_man[12:8]
+B0 350E 17;  i2c_ana_man[7:0] tx en,rx en
+B0 3517 C0;  man en
+B0 351F 90;  tx tseq
+End
+
+
+:03-31 up debug testdata:
+include this "03 HUB_SS TEST" "03-06 PIPE-up Tx/Rx LFPS"
+B0 310F 60; disable lfps tx en
+B0 31EA 20; test en = 1
+B0 31E4 13; debug io select test data from extern
+End
+
+:03-31 dp1 debug testdata:
+include this "03 HUB_SS TEST" "03-07 PIPE-dp1 Tx/Rx LFPS"
+B0 320F 60; disable lfps tx en
+B0 32EA 20; test en = 1
+B0 32E4 13; debug io select test data from extern
+End
+
+:03-31 dp2 debug testdata:
+include this "03 HUB_SS TEST" "03-08 PIPE-dp2 Tx/Rx LFPS"
+B0 330F 60; disable lfps tx en
+B0 33EA 20; test en = 1
+B0 33E4 13; debug io select test data from extern
+End
+
+:03-31 dp3 debug testdata:
+include this "03 HUB_SS TEST" "03-09 PIPE-dp3 Tx/Rx LFPS"
+B0 340F 60; disable lfps tx en
+B0 34EA 20; test en = 1
+B0 34E4 13; debug io select test data from extern
+B0 34F8 06; pll debug mux sel
+B0 34F9 04; pll debug mux sel
+End
+
+:03-31 dp4 debug testdata:
+include this "03 HUB_SS TEST" "03-10 PIPE-dp4 Tx/Rx LFPS"
+B0 350F 60; disable lfps tx en
+B0 35EA 20; test en = 1
+B0 35E4 13; debug io select test data from extern
+End
+
+
+:03-35 pipe no lowpower:
+b0 310d 34; ana man en
+b0 310e c0; ana man en
+b0 310f 04; ana man
+b0 3110 18; ana man
+b0 31ff ee; pclk on man
+b0 31e5 ff; pipe all gate on
+b0 31e6 80; free run mux is plck
+b0 3117 30; tx encoder clk man
+b0 3121 e2; rxdet clk man
+b0 3180 80; symbol lock clk man en
+b0 3182 80; symbol lock clk man
+b0 3188 cf; symbol unlock clk man
+b0 311e 08; tx unreset
+b0 311e 0c; tx reset
+b0 311e 08; tx unreset,but man
+b0 3136 00; 
+b0 3137 00; 
+b0 3138 10; tx depmh only tx20bit en
+
+b0 320d 34; ana man en
+b0 320e c0; ana man en
+b0 320f 04; ana man
+b0 3210 18; ana man
+b0 32ff ee; pclk on man
+b0 32e5 ff; pipe all gate on
+b0 32e6 80; free run mux is plck
+b0 3217 30; tx encoder clk man
+b0 3221 e2; rxdet clk man
+b0 3280 80; symbol lock clk man en
+b0 3282 80; symbol lock clk man
+b0 3288 cf; symbol unlock clk man
+b0 321e 08; tx unreset
+b0 321e 0c; tx reset
+b0 321e 08; tx unreset,but man
+b0 3236 00; 
+b0 3237 00; 
+b0 3238 10; tx depmh only tx20bit en
+
+b0 330d 34; ana man en
+b0 330e c0; ana man en
+b0 330f 04; ana man
+b0 3310 18; ana man
+b0 33ff ee; pclk on man
+b0 33e5 ff; pipe all gate on
+b0 33e6 80; free run mux is plck
+b0 3317 30; tx encoder clk man
+b0 3321 e2; rxdet clk man
+b0 3380 80; symbol lock clk man en
+b0 3382 80; symbol lock clk man
+b0 3388 cf; symbol unlock clk man
+b0 331e 08; tx unreset
+b0 331e 0c; tx reset
+b0 331e 08; tx unreset,but man
+b0 3336 00; 
+b0 3337 00; 
+b0 3338 10; tx depmh only tx20bit en
+
+b0 340d 34; ana man en
+b0 340e c0; ana man en
+b0 340f 04; ana man
+b0 3410 18; ana man
+b0 34ff ee; pclk on man
+b0 34e5 ff; pipe all gate on
+b0 34e6 80; free run mux is plck
+b0 3417 30; tx encoder clk man
+b0 3421 e2; rxdet clk man
+b0 3480 80; symbol lock clk man en
+b0 3482 80; symbol lock clk man
+b0 3488 cf; symbol unlock clk man
+b0 341e 08; tx unreset
+b0 341e 0c; tx reset
+b0 341e 08; tx unreset,but man
+b0 3436 00; 
+b0 3437 00; 
+b0 3438 10; tx depmh only tx20bit en
+
+b0 350d 34; ana man en
+b0 350e c0; ana man en
+b0 350f 04; ana man
+b0 3510 18; ana man
+b0 35ff ee; pclk on man
+b0 35e5 ff; pipe all gate on
+b0 35e6 80; free run mux is plck
+b0 3517 30; tx encoder clk man
+b0 3521 e2; rxdet clk man
+b0 3580 80; symbol lock clk man en
+b0 3582 80; symbol lock clk man
+b0 3588 cf; symbol unlock clk man
+b0 351e 08; tx unreset
+b0 351e 0c; tx reset
+b0 351e 08; tx unreset,but man
+b0 3536 00; 
+b0 3537 00; 
+b0 3538 10; tx depmh only tx20bit en
+
+End
+
+:03-36 dp2/dp3 debug retimer up/dn:
+; 
+b0 09c0 28; dp2 test sel
+b0 09c1 05; dp3 test sel
+; 
+include this "03 HUB_SS TEST" "03-08 PIPE-dp2 Tx/Rx LFPS"
+B0 330F 60; disable dpx lfps tx en
+B0 33EA 20; DPx test en = 1
+B0 33E4 13; dp x debug io select test data from extern
+; 
+include this "03 HUB_SS TEST" "03-09 PIPE-dp3 Tx/Rx LFPS"
+B0 340F 60; disable dpx lfps tx en
+B0 34EA 20; DPx test en = 1
+B0 34E4 13; dp x debug io select test data from extern
+; 
+End
+
+:03-37 five pipe digital:
+; must no ana
+include this "03 HUB_SS TEST" "03-38 pipe up dig init"
+include this "03 HUB_SS TEST" "03-39 pipe dp1 dig init"
+include this "03 HUB_SS TEST" "03-40 pipe dp2 dig init"
+include this "03 HUB_SS TEST" "03-41 pipe dp3 dig init"
+include this "03 HUB_SS TEST" "03-42 pipe dp4 dig init"
+End
+
+:03-38 pipe up dig init:
+b0 31ff ec;
+b0 31de 00;
+b0 31df 00;
+b0 31d8 60;
+b0 31e6 00;
+b0 31e5 ff;
+b0 3105 00;
+b0 3106 00;
+b0 3107 00;
+b0 310d 34;
+b0 310e 40;
+b0 310f 77;
+b0 3110 bc;
+b0 3152 4f;
+b0 3153 aa;
+b0 3154 88;
+b0 3155 88;
+b0 3156 00;
+b0 314f c0;
+b0 3170 01;
+b0 3171 5e;
+b0 3172 64;
+b0 3173 64;
+b0 3174 40;
+b0 3175 04;
+b0 3176 00;
+b0 3177 03;
+b0 3178 e8;
+b0 3150 00;
+b0 3164 30;
+b0 3163 00;
+b0 3180 00;
+b0 3182 00;
+b0 3183 c8;
+b0 3188 c0;
+b0 3195 10;
+b0 3197 9a;
+b0 31b6 40;
+b0 31b5 30;
+b0 31ae 80;
+b0 31aa 2a;
+b0 31ab f8;
+b0 31af 00;
+b0 31ac 00;
+b0 31ad 64;
+b0 31b0 00;
+b0 31b1 00;
+b0 31b2 00;
+b0 31b3 00;
+b0 319a 1e;
+b0 31a4 ff;
+b0 31a5 ff;
+b0 31a7 00;
+b0 31a8 00;
+b0 31a9 07;
+b0 31a6 00;
+b0 319d 00;
+b0 319e 00;
+b0 319f c8;
+b0 31a2 00;
+b0 31a3 00;
+b0 319b 00;
+b0 31a0 00;
+b0 31a1 08;
+b0 319c 00;
+b0 31c6 58;
+b0 31c8 20;
+b0 318d d0;
+b0 3190 00;
+b0 318e 00;
+b0 318f 00;
+b0 31c9 00;
+b0 31ca 3c;
+b0 31d2 58;
+b0 31d1 20;
+b0 3114 10;
+b0 3113 07;
+b0 3117 30;
+b0 311b 50;
+b0 3119 00;
+b0 311c 01;
+b0 311e 08;
+b0 311f 10;
+b0 3128 00;
+b0 3121 e2;
+b0 312c 00;
+b0 312d 00;
+b0 312e 6f;
+b0 312f f6;
+b0 3130 fa;
+b0 3131 ff;
+b0 3132 f0;
+b0 3134 6f;
+b0 3135 f0;
+b0 3136 00;
+b0 3137 00;
+b0 3138 10;
+b0 31fa 00;
+b0 31fc 01;
+b0 31fb 10;
+b0 31fa 80;
+b0 31fa 00;
+b0 311e 08;
+b0 311e 0c;
+b0 311e 08;
+b0 311e 00;
+End
+
+:03-39 pipe dp1 dig init:
+b0 32ff ec;
+b0 32de 00;
+b0 32df 00;
+b0 32d8 60;
+b0 32e6 00;
+b0 32e5 ff;
+b0 3205 00;
+b0 3206 00;
+b0 3207 00;
+b0 320d 34;
+b0 320e 40;
+b0 320f 77;
+b0 3210 bc;
+b0 3252 4f;
+b0 3253 aa;
+b0 3254 88;
+b0 3255 88;
+b0 3256 00;
+b0 324f c0;
+b0 3270 01;
+b0 3271 5e;
+b0 3272 64;
+b0 3273 64;
+b0 3274 40;
+b0 3275 04;
+b0 3276 00;
+b0 3277 03;
+b0 3278 e8;
+b0 3250 00;
+b0 3264 30;
+b0 3263 00;
+b0 3280 00;
+b0 3282 00;
+b0 3283 c8;
+b0 3288 c0;
+b0 3295 10;
+b0 3297 9a;
+b0 32b6 40;
+b0 32b5 30;
+b0 32ae 80;
+b0 32aa 2a;
+b0 32ab f8;
+b0 32af 00;
+b0 32ac 00;
+b0 32ad 64;
+b0 32b0 00;
+b0 32b1 00;
+b0 32b2 00;
+b0 32b3 00;
+b0 329a 1e;
+b0 32a4 ff;
+b0 32a5 ff;
+b0 32a7 00;
+b0 32a8 00;
+b0 32a9 07;
+b0 32a6 00;
+b0 329d 00;
+b0 329e 00;
+b0 329f c8;
+b0 32a2 00;
+b0 32a3 00;
+b0 329b 00;
+b0 32a0 00;
+b0 32a1 08;
+b0 329c 00;
+b0 32c6 58;
+b0 32c8 20;
+b0 328d d0;
+b0 3290 00;
+b0 328e 00;
+b0 328f 00;
+b0 32c9 00;
+b0 32ca 3c;
+b0 32d2 58;
+b0 32d1 20;
+b0 3214 10;
+b0 3213 07;
+b0 3217 30;
+b0 321b 50;
+b0 3219 00;
+b0 321c 01;
+b0 321e 08;
+b0 321f 10;
+b0 3228 00;
+b0 3221 e2;
+b0 322c 00;
+b0 322d 00;
+b0 322e 6f;
+b0 322f f6;
+b0 3230 fa;
+b0 3231 ff;
+b0 3232 f0;
+b0 3234 6f;
+b0 3235 f0;
+b0 3236 00;
+b0 3237 00;
+b0 3238 10;
+b0 32fa 00;
+b0 32fc 01;
+b0 32fb 10;
+b0 32fa 80;
+b0 32fa 00;
+b0 321e 08;
+b0 321e 0c;
+b0 321e 08;
+b0 321e 00;
+End
+
+:03-40 pipe dp2 dig init:
+b0 33ff ec;
+b0 33de 00;
+b0 33df 00;
+b0 33d8 60;
+b0 33e6 00;
+b0 33e5 ff;
+b0 3305 00;
+b0 3306 00;
+b0 3307 00;
+b0 330d 34;
+b0 330e 40;
+b0 330f 77;
+b0 3310 bc;
+b0 3352 4f;
+b0 3353 aa;
+b0 3354 88;
+b0 3355 88;
+b0 3356 00;
+b0 334f c0;
+b0 3370 01;
+b0 3371 5e;
+b0 3372 64;
+b0 3373 64;
+b0 3374 40;
+b0 3375 04;
+b0 3376 00;
+b0 3377 03;
+b0 3378 e8;
+b0 3350 00;
+b0 3364 30;
+b0 3363 00;
+b0 3380 00;
+b0 3382 00;
+b0 3383 c8;
+b0 3388 c0;
+b0 3395 10;
+b0 3397 9a;
+b0 33b6 40;
+b0 33b5 30;
+b0 33ae 80;
+b0 33aa 2a;
+b0 33ab f8;
+b0 33af 00;
+b0 33ac 00;
+b0 33ad 64;
+b0 33b0 00;
+b0 33b1 00;
+b0 33b2 00;
+b0 33b3 00;
+b0 339a 1e;
+b0 33a4 ff;
+b0 33a5 ff;
+b0 33a7 00;
+b0 33a8 00;
+b0 33a9 07;
+b0 33a6 00;
+b0 339d 00;
+b0 339e 00;
+b0 339f c8;
+b0 33a2 00;
+b0 33a3 00;
+b0 339b 00;
+b0 33a0 00;
+b0 33a1 08;
+b0 339c 00;
+b0 33c6 58;
+b0 33c8 20;
+b0 338d d0;
+b0 3390 00;
+b0 338e 00;
+b0 338f 00;
+b0 33c9 00;
+b0 33ca 3c;
+b0 33d2 58;
+b0 33d1 20;
+b0 3314 10;
+b0 3313 07;
+b0 3317 30;
+b0 331b 50;
+b0 3319 00;
+b0 331c 01;
+b0 331e 08;
+b0 331f 10;
+b0 3328 00;
+b0 3321 e2;
+b0 332c 00;
+b0 332d 00;
+b0 332e 6f;
+b0 332f f6;
+b0 3330 fa;
+b0 3331 ff;
+b0 3332 f0;
+b0 3334 6f;
+b0 3335 f0;
+b0 3336 00;
+b0 3337 00;
+b0 3338 10;
+b0 33fa 00;
+b0 33fc 01;
+b0 33fb 10;
+b0 33fa 80;
+b0 33fa 00;
+b0 331e 08;
+b0 331e 0c;
+b0 331e 08;
+b0 331e 00;
+End
+
+:03-41 pipe dp3 dig init:
+b0 34ff ec;
+b0 34de 00;
+b0 34df 00;
+b0 34d8 60;
+b0 34e6 00;
+b0 34e5 ff;
+b0 3405 00;
+b0 3406 00;
+b0 3407 00;
+b0 340d 34;
+b0 340e 40;
+b0 340f 77;
+b0 3410 bc;
+b0 3452 4f;
+b0 3453 aa;
+b0 3454 88;
+b0 3455 88;
+b0 3456 00;
+b0 344f c0;
+b0 3470 01;
+b0 3471 5e;
+b0 3472 64;
+b0 3473 64;
+b0 3474 40;
+b0 3475 04;
+b0 3476 00;
+b0 3477 03;
+b0 3478 e8;
+b0 3450 00;
+b0 3464 30;
+b0 3463 00;
+b0 3480 00;
+b0 3482 00;
+b0 3483 c8;
+b0 3488 c0;
+b0 3495 10;
+b0 3497 9a;
+b0 34b6 40;
+b0 34b5 30;
+b0 34ae 80;
+b0 34aa 2a;
+b0 34ab f8;
+b0 34af 00;
+b0 34ac 00;
+b0 34ad 64;
+b0 34b0 00;
+b0 34b1 00;
+b0 34b2 00;
+b0 34b3 00;
+b0 349a 1e;
+b0 34a4 ff;
+b0 34a5 ff;
+b0 34a7 00;
+b0 34a8 00;
+b0 34a9 07;
+b0 34a6 00;
+b0 349d 00;
+b0 349e 00;
+b0 349f c8;
+b0 34a2 00;
+b0 34a3 00;
+b0 349b 00;
+b0 34a0 00;
+b0 34a1 08;
+b0 349c 00;
+b0 34c6 58;
+b0 34c8 20;
+b0 348d d0;
+b0 3490 00;
+b0 348e 00;
+b0 348f 00;
+b0 34c9 00;
+b0 34ca 3c;
+b0 34d2 58;
+b0 34d1 20;
+b0 3414 10;
+b0 3413 07;
+b0 3417 30;
+b0 341b 50;
+b0 3419 00;
+b0 341c 01;
+b0 341e 08;
+b0 341f 10;
+b0 3428 00;
+b0 3421 e2;
+b0 342c 00;
+b0 342d 00;
+b0 342e 6f;
+b0 342f f6;
+b0 3430 fa;
+b0 3431 ff;
+b0 3432 f0;
+b0 3434 6f;
+b0 3435 f0;
+b0 3436 00;
+b0 3437 00;
+b0 3438 10;
+b0 34fa 00;
+b0 34fc 01;
+b0 34fb 10;
+b0 34fa 80;
+b0 34fa 00;
+b0 341e 08;
+b0 341e 0c;
+b0 341e 08;
+b0 341e 00;
+End
+
+:03-42 pipe dp4 dig init:
+b0 35ff ec;
+b0 35de 00;
+b0 35df 00;
+b0 35d8 60;
+b0 35e6 00;
+b0 35e5 ff;
+b0 3505 00;
+b0 3506 00;
+b0 3507 00;
+b0 350d 34;
+b0 350e 40;
+b0 350f 77;
+b0 3510 bc;
+b0 3552 4f;
+b0 3553 aa;
+b0 3554 88;
+b0 3555 88;
+b0 3556 00;
+b0 354f c0;
+b0 3570 01;
+b0 3571 5e;
+b0 3572 64;
+b0 3573 64;
+b0 3574 40;
+b0 3575 04;
+b0 3576 00;
+b0 3577 03;
+b0 3578 e8;
+b0 3550 00;
+b0 3564 30;
+b0 3563 00;
+b0 3580 00;
+b0 3582 00;
+b0 3583 c8;
+b0 3588 c0;
+b0 3595 10;
+b0 3597 9a;
+b0 35b6 40;
+b0 35b5 30;
+b0 35ae 80;
+b0 35aa 2a;
+b0 35ab f8;
+b0 35af 00;
+b0 35ac 00;
+b0 35ad 64;
+b0 35b0 00;
+b0 35b1 00;
+b0 35b2 00;
+b0 35b3 00;
+b0 359a 1e;
+b0 35a4 ff;
+b0 35a5 ff;
+b0 35a7 00;
+b0 35a8 00;
+b0 35a9 07;
+b0 35a6 00;
+b0 359d 00;
+b0 359e 00;
+b0 359f c8;
+b0 35a2 00;
+b0 35a3 00;
+b0 359b 00;
+b0 35a0 00;
+b0 35a1 08;
+b0 359c 00;
+b0 35c6 58;
+b0 35c8 20;
+b0 358d d0;
+b0 3590 00;
+b0 358e 00;
+b0 358f 00;
+b0 35c9 00;
+b0 35ca 3c;
+b0 35d2 58;
+b0 35d1 20;
+b0 3514 10;
+b0 3513 07;
+b0 3517 30;
+b0 351b 50;
+b0 3519 00;
+b0 351c 01;
+b0 351e 08;
+b0 351f 10;
+b0 3528 00;
+b0 3521 e2;
+b0 352c 00;
+b0 352d 00;
+b0 352e 6f;
+b0 352f f6;
+b0 3530 fa;
+b0 3531 ff;
+b0 3532 f0;
+b0 3534 6f;
+b0 3535 f0;
+b0 3536 00;
+b0 3537 00;
+b0 3538 10;
+b0 35fa 00;
+b0 35fc 01;
+b0 35fb 10;
+b0 35fa 80;
+b0 35fa 00;
+b0 351e 08;
+b0 351e 0c;
+b0 351e 08;
+b0 351e 00;
+End
+
+
+:03-43 pipe up dig init for gse:
+;rxdet wait time = 2.5ms
+b0 31ff ec;
+b0 31de 00;
+b0 31df 00;
+b0 31d8 60;
+b0 31e6 00;
+b0 31e5 ff;
+b0 3105 00;
+b0 3106 00;
+b0 3107 00;
+b0 310d 34;
+b0 310e 40;
+b0 310f 77;
+b0 3110 bc;
+b0 3152 4f;
+b0 3153 aa;
+b0 3154 88;
+b0 3155 88;
+b0 3156 00;
+b0 314f c0;
+b0 3170 01;
+b0 3171 5e;
+b0 3172 64;
+b0 3173 64;
+b0 3174 40;
+b0 3175 04;
+b0 3176 00;
+b0 3177 03;
+b0 3178 e8;
+b0 3150 00;
+b0 3164 30;
+b0 3163 00;
+b0 3180 00;
+b0 3182 00;
+b0 3183 c8;
+b0 3188 c0;
+b0 3195 10;
+b0 3197 9a;
+b0 31b6 40;
+b0 31b5 30;
+b0 31ae 80;
+b0 31aa 2a;
+b0 31ab f8;
+b0 31af 00;
+b0 31ac 00;
+b0 31ad 64;
+b0 31b0 00;
+b0 31b1 00;
+b0 31b2 00;
+b0 31b3 00;
+b0 319a 1e;
+b0 31a4 ff;
+b0 31a5 ff;
+b0 31a7 00;
+b0 31a8 00;
+b0 31a9 07;
+b0 31a6 00;
+b0 319d 00;
+b0 319e 00;
+b0 319f c8;
+b0 31a2 00;
+b0 31a3 00;
+b0 319b 00;
+b0 31a0 00;
+b0 31a1 08;
+b0 319c 00;
+b0 31c6 58;
+b0 31c8 20;
+b0 318d d0;
+b0 3190 00;
+b0 318e 00;
+b0 318f 00;
+b0 31c9 00;
+b0 31ca 3c;
+b0 31d2 58;
+b0 31d1 20;
+b0 3114 10;
+b0 3113 07;
+b0 3117 30;
+b0 311b 50;
+b0 3119 00;
+b0 311c 01;
+b0 311e 08;
+b0 311f 10;
+b0 3128 00;
+b0 3121 e1;
+b0 312c 00;
+b0 312d 00;
+b0 312e 6f;
+b0 312f f6;
+b0 3130 fa;
+b0 3131 ff;
+b0 3132 f0;
+b0 3134 6f;
+b0 3135 f0;
+b0 3136 00;
+b0 3137 00;
+b0 3138 10;
+b0 31fa 00;
+b0 31fc 01;
+b0 31fb 10;
+b0 31fa 80;
+b0 31fa 00;
+b0 311e 08;
+b0 311e 0c;
+b0 311e 08;
+b0 311e 00;
+End
+
+:03-50 only pipe up eq set:
+b0 0909 00; 
+
+; donot set cdr
+; b0 1009 03; 
+; b0 1109 01; 
+; b0 1209 01; 
+; b0 1309 01; 
+; b0 1409 01; 
+
+b0 3195 00; 
+b0 3195 00; 
+b0 3195 00; 
+b0 3195 00; 
+b0 3197 9a; 
+b0 3197 9a; 
+b0 3197 9a; 
+b0 3197 9a; 
+b0 3197 9a; 
+b0 3197 9a; 
+b0 3197 9a; 
+b0 31b5 80; 
+b0 31b6 40; 
+b0 31ae 80; 
+b0 31aa 2a; 
+b0 31ab f8; 
+b0 31af 00; 
+b0 31ac 00; 
+b0 31ad 64; 
+b0 31b6 60; 
+b0 31b0 0f; 
+b0 31b1 a0; 
+b0 31b6 70; 
+b0 31b2 00; 
+b0 31b3 80; 
+b0 319a 1e; 
+b0 319b 10; 
+b0 319c 00; 
+b0 319d 00; 
+b0 319e ff; 
+b0 319f 64; 
+b0 31a4 ff; 
+b0 31a5 fa; 
+b0 3197 9a; 
+b0 31a6 00; 
+b0 31a7 00; 
+b0 31a8 00; 
+b0 31a9 02; 
+b0 31a2 00; 
+b0 31a3 02; 
+b0 31a0 00; 
+b0 31a1 80; 
+End
+
+##04 PC Connect Test##
+:04-00 HUB1.1 UP PC_CONNCET :
+B0 2810 DC;  i2c_dpport_count_50us
+B0 2811 05;  i2c_dpport_count_50us
+B0 2812 70;  i2c_dpport_count_200us
+B0 2813 17;  i2c_dpport_count_200us
+B0 2814 E0;  i2c_dpport_cnt_reset_complete
+B0 2815 93;  i2c_dpport_cnt_reset_complete
+B0 2816 04;  i2c_dpport_cnt_reset_complete
+B0 280A 80;  i2c_hub_ctrl_count_1ms
+B0 280B 8C;  i2c_hub_ctrl_count_1ms
+
+B0 2801 C0;  i2c_hub11_reset_timer
+B0 2802 D4;  i2c_hub11_reset_timer
+B0 2803 01;  i2c_hub11_reset_timer
+B0 2804 80;  i2c_hub11_resume_timer
+B0 2805 A9;  i2c_hub11_resume_timer
+B0 2806 03;  i2c_hub11_resume_timer
+B0 28E9 08;  i2c_hub1p1_port_reset_en
+
+
+B0 2845 03;  i2c_up_force_fsmode
+
+B0 0964 00;  hub_2_rstn 
+B0 0964 01;  remove hub_2_rstn 
+
+End
+
+:04-01 HUB2.0 UP PC_CONNCET :
+B0 476C 2D;  UP_v2 rx_wrreq_cnt
+B0 4A6C 2D;  DP3_v2 rx_wrreq_cnt
+B0 4B6C 2D;  DP4_v2 rx_wrreq_cnt
+
+B0 2810 DC;  i2c_dpport_count_50us
+B0 2811 05;  i2c_dpport_count_50us
+B0 2812 70;  i2c_dpport_count_200us
+B0 2813 17;  i2c_dpport_count_200us
+B0 2814 10;  i2c_dpport_cnt_reset_complete
+B0 2815 09;  i2c_dpport_cnt_reset_complete
+B0 2816 05;  i2c_dpport_cnt_reset_complete
+B0 2817 C0;  i2c_dpport_resume_cntr
+B0 2818 27;  i2c_dpport_resume_cntr
+B0 2819 09;  i2c_dpport_resume_cntr
+
+B0 280A 80;  i2c_hub_ctrl_count_1ms
+B0 280B 8C;  i2c_hub_ctrl_count_1ms
+
+
+B0 2801 C0;  i2c_hub11_reset_timer
+B0 2802 D4;  i2c_hub11_reset_timer
+B0 2803 01;  i2c_hub11_reset_timer
+B0 2804 80;  i2c_hub11_resume_timer
+B0 2805 A9;  i2c_hub11_resume_timer
+B0 2806 03;  i2c_hub11_resume_timer
+B0 28E9 08;  i2c_hub1p1_port_reset_en
+
+B0 2845 01;  i2c_up_force_fsmode  hs_mode
+B0 0900 08 ;  480m_domain_rst
+B0 0900 00 ; 480m_domain_rst
+B0 0964 00;  hub_2_rstn 
+B0 0964 01;  remove hub_2_rstn
+
+
+
+End
+
+:04-02 HUB_SS PC CONNECT:
+B0 3840 BC;  DP1 i2c_count_100ms_ux
+B0 3940 BC;  DP2 i2c_count_100ms_ux
+B0 3A40 BC;  DP3 i2c_count_100ms_ux
+B0 3B40 BC;  DP4 i2c_count_100ms_ux
+
+B0 3841 BE;  DP1 i2c_count_100ms_ux
+B0 3941 BE;  DP2 i2c_count_100ms_ux
+B0 3A41 BE;  DP3 i2c_count_100ms_ux
+B0 3B41 BE;  DP4 i2c_count_100ms_ux
+
+B0 38BE 3F;  DP1 i2c_lgo_u1_time
+B0 39BE 3F;  DP2 i2c_lgo_u1_time
+B0 3ABE 3F;  DP3 i2c_lgo_u1_time
+B0 3BBE 3F;  DP4 i2c_lgo_u1_time
+B0 38BF 3F;  DP1 i2c_lgo_u2_time
+B0 39BF 3F;  DP2 i2c_lgo_u2_time
+B0 3ABF 3F;  DP3 i2c_lgo_u2_time
+B0 3BBF 3F;  DP4 i2c_lgo_u2_time
+B0 37A6 04;  UP  u1_u2 initiate_en,accept_en
+B0 38A6 04;  DP1 u1_u2 initiate_en,accept_en
+B0 39A6 04;  DP2 u1_u2 initiate_en,accept_en
+B0 3AA6 04;  DP3 u1_u2 initiate_en,accept_en
+B0 3BA6 04;  DP4 u1_u2 initiate_en,accept_en
+
+
+B0 3700 C4;  UP  i2c_CREDIT_HP_timer
+B0 3800 C4;  DP1 i2c_CREDIT_HP_timer
+B0 3900 C4;  DP2 i2c_CREDIT_HP_timer
+B0 3A00 C4;  DP3 i2c_CREDIT_HP_timer
+B0 3B00 C4;  DP4 i2c_CREDIT_HP_timer
+
+B0 3762 80;  UP  i2c_adv_hp_pending_timer
+B0 3763 9D;  UP  i2c_adv_hp_pending_timer
+B0 3862 80;  DP1 i2c_adv_hp_pending_timer
+B0 3863 9D;  DP1 i2c_adv_hp_pending_timer
+B0 3962 80;  DP2 i2c_adv_hp_pending_timer
+B0 3963 9D;  DP2 i2c_adv_hp_pending_timer
+B0 3A62 80;  DP3 i2c_adv_hp_pending_timer
+B0 3A63 9D;  DP3 i2c_adv_hp_pending_timer
+B0 3B62 80;  DP4 i2c_adv_hp_pending_timer
+B0 3B63 9D;  DP4 i2c_adv_hp_pending_timer
+
+B0 3711 18;  UP  i2c_count_16_times
+B0 3811 18;  DP1 i2c_count_16_times
+B0 3911 18;  DP2 i2c_count_16_times
+B0 3A11 18;  DP3 i2c_count_16_times
+B0 3B11 18;  DP4 i2c_count_16_times
+
+B0 3718 14;  UP  i2c_timeout_12ms
+B0 3719 72;  UP  i2c_timeout_12ms
+B0 3818 14;  DP1 i2c_timeout_12ms
+B0 3819 72;  DP1 i2c_timeout_12ms
+B0 3918 14;  DP2 i2c_timeout_12ms
+B0 3919 72;  DP2 i2c_timeout_12ms
+B0 3A18 14;  DP3 i2c_timeout_12ms
+B0 3A19 72;  DP3 i2c_timeout_12ms
+B0 3B18 14;  DP4 i2c_timeout_12ms
+B0 3B19 72;  DP4 i2c_timeout_12ms
+
+B0 3743 A0;  UP  u3_exit_lp1_tx  i2c_count_80us_tx_pci
+B0 3744 86;  UP  u3_exit_lp1_tx  i2c_count_80us_tx_pci
+B0 3745 01;  UP  u3_exit_lp1_tx  i2c_count_80us_tx_pci
+B0 3843 A0;  DP1 u3_exit_lp1_tx  i2c_count_80us_tx_pci
+B0 3844 86;  DP1 u3_exit_lp1_tx  i2c_count_80us_tx_pci
+B0 3845 01;  DP1 u3_exit_lp1_tx  i2c_count_80us_tx_pci
+B0 3943 A0;  DP2 u3_exit_lp1_tx  i2c_count_80us_tx_pci
+B0 3944 86;  DP2 u3_exit_lp1_tx  i2c_count_80us_tx_pci
+B0 3945 01;  DP2 u3_exit_lp1_tx  i2c_count_80us_tx_pci
+B0 3A43 A0;  DP3 u3_exit_lp1_tx  i2c_count_80us_tx_pci
+B0 3A44 86;  DP3 u3_exit_lp1_tx  i2c_count_80us_tx_pci
+B0 3A45 01;  DP3 u3_exit_lp1_tx  i2c_count_80us_tx_pci
+B0 3B43 A0;  DP4 u3_exit_lp1_tx  i2c_count_80us_tx_pci
+B0 3B44 86;  DP4 u3_exit_lp1_tx  i2c_count_80us_tx_pci
+B0 3B45 01;  DP4 u3_exit_lp1_tx  i2c_count_80us_tx_pci
+
+B0 3753 10;  UP  i2c_lfps_polling_tx_total_cnt
+B0 3853 10;  DP1 i2c_lfps_polling_tx_total_cnt
+B0 3953 10;  DP2 i2c_lfps_polling_tx_total_cnt
+B0 3A53 10;  DP3 i2c_lfps_polling_tx_total_cnt
+B0 3B53 10;  DP4 i2c_lfps_polling_tx_total_cnt
+
+B0 3757 05;  UP  i2c_lfps_polling_tx_cnt_after_rx
+B0 3857 05;  DP1 i2c_lfps_polling_tx_cnt_after_rx
+B0 3957 05;  DP2 i2c_lfps_polling_tx_cnt_after_rx
+B0 3A57 05;  DP3 i2c_lfps_polling_tx_cnt_after_rx
+B0 3B57 05;  DP4 i2c_lfps_polling_tx_cnt_after_rx
+
+B0 3788 01;  UP  i2c_compliance_mode_en
+B0 3888 01;  DP1 i2c_compliance_mode_en
+B0 3988 01;  DP2 i2c_compliance_mode_en
+B0 3A88 01;  DP3 i2c_compliance_mode_en
+B0 3B88 01;  DP4 i2c_compliance_mode_en
+
+B0 3712 FF;  UP  i2c_tseq_cnt_times
+B0 3713 FF;  UP  i2c_tseq_cnt_times
+B0 3812 FF;  DP1 i2c_tseq_cnt_times
+B0 3813 FF;  DP1 i2c_tseq_cnt_times
+B0 3912 FF;  DP2 i2c_tseq_cnt_times
+B0 3913 FF;  DP2 i2c_tseq_cnt_times
+B0 3A12 FF;  DP3 i2c_tseq_cnt_times
+B0 3A13 FF;  DP3 i2c_tseq_cnt_times
+B0 3B12 FF;  DP4 i2c_tseq_cnt_times
+B0 3B13 FF;  DP4 i2c_tseq_cnt_times
+
+B0 3711 18;  UP  TS2_tx_count
+B0 3811 18;  DP1 TS2_tx_count
+B0 3911 18;  DP1 TS2_tx_count
+B0 3A11 18;  DP1 TS2_tx_count
+B0 3B11 18;  DP1 TS2_tx_count
+
+
+B0 381F 10;  DP1 i2c_count0_100ms  warm_rst
+B0 3820 5E;  DP1 i2c_count0_100ms  warm_rst
+B0 3821 5F;  DP1 i2c_count0_100ms  warm_rst
+B0 391F 10;  DP2 i2c_count0_100ms  warm_rst
+B0 3920 5E;  DP2 i2c_count0_100ms  warm_rst
+B0 3921 5F;  DP2 i2c_count0_100ms  warm_rst
+B0 3A1F 10;  DP3 i2c_count0_100ms  warm_rst
+B0 3A20 5E;  DP3 i2c_count0_100ms  warm_rst
+B0 3A21 5F;  DP3 i2c_count0_100ms  warm_rst
+B0 3B1F 10;  DP4 i2c_count0_100ms  warm_rst
+B0 3B20 5E;  DP4 i2c_count0_100ms  warm_rst
+B0 3B21 5F;  DP4 i2c_count0_100ms  warm_rst
+
+
+B0 3707 23;  UP  SKP  35*8
+
+B0 3703 71;  UP  i2c_pending_hp_timer  10us
+B0 3704 02;  UP  i2c_pending_hp_timer  
+B0 3803 71;  DP1 i2c_pending_hp_timer  10us
+B0 3804 02;  DP1 i2c_pending_hp_timer  
+B0 3903 71;  DP2 i2c_pending_hp_timer  10us
+B0 3904 02;  DP2 i2c_pending_hp_timer  
+B0 3A03 71;  DP3 i2c_pending_hp_timer  10us
+B0 3A04 02;  DP3 i2c_pending_hp_timer 
+B0 3B03 71;  DP4 i2c_pending_hp_timer  10us
+B0 3B04 02;  DP4 i2c_pending_hp_timer 
+
+B0 3783 19;  UP  U1_Exit_lp1_rx  400ns
+B0 3883 19;  DP1 U1_Exit_lp1_rx  400ns
+B0 3983 19;  DP2 U1_Exit_lp1_rx  400ns
+B0 3A83 19;  DP3 U1_Exit_lp1_rx  400ns
+B0 3B83 19;  DP4 U1_Exit_lp1_rx  400ns
+
+B0 379B 41;  UP  U1_Exit_lp1_tx  1040ns
+B0 389B 41;  DP1 U1_Exit_lp1_tx  1040ns
+B0 399B 41;  DP2 U1_Exit_lp1_tx  1040ns
+B0 3A9B 41;  DP3 U1_Exit_lp1_tx  1040ns
+B0 3B9B 41;  DP4 U1_Exit_lp1_tx  1040ns
+
+B0 374C 26;  UP  U1_Exit_lp2_rx  600ns
+B0 384C 26;  DP1 U1_Exit_lp2_rx  600ns
+B0 394C 26;  DP2 U1_Exit_lp2_rx  600ns
+B0 3A4C 26;  DP3 U1_Exit_lp2_rx  600ns
+B0 3B4C 26;  DP4 U1_Exit_lp2_rx  600ns
+
+B0 37A0 41;  UP  U1_Exit_lp2_tx  1040ns
+B0 38A0 41;  DP1 U1_Exit_lp2_tx  1040ns
+B0 39A0 41;  DP2 U1_Exit_lp2_tx  1040ns
+B0 3AA0 41;  DP3 U1_Exit_lp2_tx  1040ns
+B0 3BA0 41;  DP4 U1_Exit_lp2_tx  1040ns
+
+
+
+B0 374D A0;  UP  U2_Exit_lp1_rx  64us
+B0 374E 0F;  UP  U2_Exit_lp1_rx
+B0 384D A0;  DP1 U2_Exit_lp1_rx  64us
+B0 384E 0F;  DP1 U2_Exit_lp1_rx
+B0 394D A0;  DP2 U2_Exit_lp1_rx  64us
+B0 394E 0F;  DP2 U2_Exit_lp1_rx
+B0 3A4D A0;  DP3 U2_Exit_lp1_rx  64us
+B0 3A4E 0F;  DP3 U2_Exit_lp1_rx
+B0 3B4D A0;  DP4 U2_Exit_lp1_rx  64us
+B0 3B4E 0F;  DP4 U2_Exit_lp1_rx
+
+B0 379D 10;  UP  U2_Exit_lp1_tx  160 us
+B0 379E 27;  UP  U2_Exit_lp1_tx
+B0 389D 10;  DP1 U2_Exit_lp1_tx  160 us
+B0 389E 27;  DP1 U2_Exit_lp1_tx
+B0 399D 10;  DP2 U2_Exit_lp1_tx  160 us
+B0 399E 27;  DP2 U2_Exit_lp1_tx
+B0 3A9D 10;  DP3 U2_Exit_lp1_tx  160 us
+B0 3A9E 27;  DP3 U2_Exit_lp1_tx
+B0 3B9D 10;  DP4 U2_Exit_lp1_tx  160 us
+B0 3B9E 27;  DP4 U2_Exit_lp1_tx
+
+B0 379F 26;  UP  U2_Exit_lp2_rx  600ns
+B0 389F 26;  DP1 U2_Exit_lp2_rx  600ns
+B0 399F 26;  DP2 U2_Exit_lp2_rx  600ns
+B0 3A9F 26;  DP3 U2_Exit_lp2_rx  600ns
+B0 3B9F 26;  DP4 U2_Exit_lp2_rx  600ns
+
+
+B0 37A2 34;  UP  U3_Exit_lp2_tx  2.9 ms
+B0 37A3 1B;  UP  U3_Exit_lp2_tx
+B0 37A4 01;  UP  U3_Exit_lp2_tx
+B0 3843 A0;  DP1 U3_Exit_lp1_tx  4 ms
+B0 3844 86;  DP1 U3_Exit_lp1_tx
+B0 3845 01;  DP1 U3_Exit_lp1_tx
+B0 3943 A0;  DP2 U3_Exit_lp1_tx  4 ms
+B0 3944 86;  DP2 U3_Exit_lp1_tx
+B0 3945 01;  DP2 U3_Exit_lp1_tx
+B0 3A43 A0;  DP3 U3_Exit_lp1_tx  4 ms
+B0 3A44 86;  DP3 U3_Exit_lp1_tx
+B0 3A45 01;  DP3 U3_Exit_lp1_tx
+B0 3B43 A0;  DP4 U3_Exit_lp1_tx  4 ms
+B0 3B44 86;  DP4 U3_Exit_lp1_tx
+B0 3B45 01;  DP4 U3_Exit_lp1_tx
+
+B0 3835 10;  DP1 i2c_ping_chk_300ns  240ns
+B0 3935 10;  DP2 i2c_ping_chk_300ns  240ns
+B0 3A35 10;  DP3 i2c_ping_chk_300ns  240ns
+B0 3B35 10;  DP4 i2c_ping_chk_300ns  240ns
+
+
+B0 303C 55;  DP*_c_connenct_en  
+
+
+; B0 3668 04; PRC
+; B0 3669 03; 
+; B0 366A 04; 
+; B0 366B 08; 
+
+B0 3688 10;  hub_name
+B0 3689 03; 
+B0 368A 47; 
+B0 368B 00; 
+B0 368C 53; 
+B0 368D 00; 
+B0 368E 55; 
+B0 368F 00; 
+
+B0 3690 31; 
+B0 3691 00; 
+B0 3692 30; 
+B0 3693 00; 
+B0 3694 30; 
+B0 3695 00; 
+B0 3696 31; 
+B0 3697 00; 
+
+B0 361F E0; Self-powered
+B0 3620 00; bMaxPower
+B0 367D 32; bPwrOn2PwrGood
+B0 367F 04; bHubHdrDecLat
+B0 3680 90; wHubDelay
+
+B0 3652 F0; container ID
+B0 3653 56; container ID
+B0 3654 4B; container ID
+B0 3655 9F; container ID
+B0 3656 F6; container ID
+B0 3657 1D; container ID
+
+B0 3658 E0; container ID
+B0 3659 11; container ID
+B0 365A AC; container ID
+B0 365B 64; container ID
+B0 365C 08; container ID
+B0 365D 00; container ID
+B0 365E 20; container ID
+B0 365F 0C; container ID
+
+B0 3660 9A; container ID
+B0 3661 66; container ID
+
+B0 0964 01;  hub_ss_rstn 
+B0 0964 03;  remove hub_ss_rstn
+
+End
+
+:04-05 HUB_SS clk gate all:
+; B0 31F5 50; gate pipe + ip
+B0 32F5 50; 
+B0 33F5 50; 
+B0 34F5 50; 
+B0 35F5 50; 
+End
+
+:04-06 HUB_SS ana gate all:
+; B0 310B FF; gate ana en
+; B0 310C FF; 
+B0 320B FF; 
+B0 320C FF; 
+B0 330B FF; 
+B0 330C FF; 
+B0 340B FF; 
+B0 340C FF; 
+B0 350B FF; 
+B0 350C FF; 
+End
+
+:04-07 HUB u2 HS ana gate all:
+B0 0A02 73; 
+B0 0A08 30; 
+B0 0B02 73; 
+B0 0B08 30; 
+B0 0C02 73; 
+B0 0C08 30; 
+B0 0D02 73; 
+B0 0D08 30; 
+B0 0E02 73; 
+B0 0E08 30; 
+
+B0 0950 09; 
+B0 0951 09; 
+B0 0952 01; 
+
+End
+
+:04-08 all pipe disable eq start/ebuf rst auto:
+B0 3197 23; no eq adj auto,eq/cdr is default value
+B0 31C9 8E; ebuf rst man
+
+B0 3297 23; no eq adj auto,eq/cdr is default value
+B0 32C9 8E; ebuf rst man
+
+B0 3397 23; no eq adj auto,eq/cdr is default value
+B0 33C9 8E; ebuf rst man
+
+B0 3497 23; no eq adj auto,eq/cdr is default value
+B0 34C9 8E; ebuf rst man
+
+B0 3597 23; no eq adj auto,eq/cdr is default value
+B0 35C9 8E; ebuf rst man
+End
+
+:04-09 all pipe enable cdr tracking auto:
+B0 3174 20; ss valid only lfps
+B0 3176 80; 
+B0 3177 00; 
+B0 3178 00; mini cnt = 0
+
+B0 3274 20; ss valid only lfps
+B0 3276 80; 
+B0 3277 00; 
+B0 3278 00; mini cnt = 0
+
+B0 3374 20; ss valid only lfps
+B0 3376 80; 
+B0 3377 00; 
+B0 3378 00; mini cnt = 0
+
+B0 3474 20; ss valid only lfps
+B0 3476 80; 
+B0 3477 00; 
+B0 3478 00; mini cnt = 0
+
+B0 3574 20; ss valid only lfps
+B0 3576 80; 
+B0 3577 00; 
+B0 3578 00; mini cnt = 0
+
+End
+
+:04-10 write EQ ram:
+
+; RAM EQ, gen from python ram_eq_all function
+
+b0 0905 05; 
+
+b0 1500 01; group 0
+b0 1501 c0; 
+b0 1502 43; 
+b0 1503 3c; 
+b0 1504 0a; 
+b0 1505 00; 
+b0 1506 80; 
+b0 1507 00; 
+b0 1508 68; 
+b0 1509 00; 
+b0 150a 00; 
+
+b0 150b 01; group 1
+b0 150c c0; 
+b0 150d 41; 
+b0 150e bc; 
+b0 150f 09; 
+b0 1510 00; 
+b0 1511 80; 
+b0 1512 00; 
+b0 1513 68; 
+b0 1514 00; 
+b0 1515 00; 
+
+b0 1516 01; group 2
+b0 1517 c0; 
+b0 1518 60; 
+b0 1519 3c; 
+b0 151a 0d; 
+b0 151b 00; 
+b0 151c 80; 
+b0 151d 00; 
+b0 151e 68; 
+b0 151f 00; 
+b0 1520 00; 
+
+b0 1521 01; group 3
+b0 1522 40; 
+b0 1523 60; 
+b0 1524 bc; 
+b0 1525 0c; 
+b0 1526 00; 
+b0 1527 80; 
+b0 1528 00; 
+b0 1529 68; 
+b0 152a 00; 
+b0 152b 00; 
+
+b0 152c 01; group 4
+b0 152d 00; 
+b0 152e 60; 
+b0 152f 3c; 
+b0 1530 0c; 
+b0 1531 00; 
+b0 1532 80; 
+b0 1533 00; 
+b0 1534 68; 
+b0 1535 00; 
+b0 1536 00; 
+
+b0 1537 01; group 5
+b0 1538 00; 
+b0 1539 60; 
+b0 153a 3c; 
+b0 153b 0c; 
+b0 153c 00; 
+b0 153d 80; 
+b0 153e 00; 
+b0 153f 68; 
+b0 1540 00; 
+b0 1541 00; 
+
+b0 1542 01; group 6
+b0 1543 00; 
+b0 1544 60; 
+b0 1545 3c; 
+b0 1546 0c; 
+b0 1547 00; 
+b0 1548 80; 
+b0 1549 00; 
+b0 154a 68; 
+b0 154b 00; 
+b0 154c 00; 
+
+b0 154d 01; group 7
+b0 154e 00; 
+b0 154f 60; 
+b0 1550 3c; 
+b0 1551 0c; 
+b0 1552 00; 
+b0 1553 80; 
+b0 1554 00; 
+b0 1555 68; 
+b0 1556 00; 
+b0 1557 00; 
+
+b0 0905 00; 
+
+End
+
+
+:04-11 UP EQ AUTO ADJ:
+B0 103F 00; rst man=0
+B0 1001 00; i2c_skip_init_sweep=0
+B0 1009 02; i2c_eq_dfe_mode=0,i2c_eq_d_e_check_en=0,i2c_adp_only_meas_init_eq_cfg=0,i2c_eq_seg_cfg_en=1,i2c_eq_init_sel=0
+B0 1063 00; 
+B0 1064 09; 
+B0 1065 C4; i2c_cdr_settle_cycles=10us
+B0 1069 F0; seg en
+B0 106A 03; eg en
+B0 104B 00; iic man !en
+B0 104A 00; iic man !en
+B0 104D 00; iic man !en
+B0 1048 00; iic man !en
+B0 104E 00; iic man !en
+B0 104F 00; iic man !en
+B0 106B 00; iic man !en
+B0 106C 00; iic man !en
+
+B0 10E0 07; freq man en =0
+
+B0 3197 1B; pl+eq en,group share
+B0 31A4 13; 
+B0 31A5 88; eq no resp 200us
+B0 31B6 40; adj then check mode
+
+End
+
+:04-12 all cdr freqtrack man en = 0:
+b0 10e0 07; 
+b0 11e0 07; 
+b0 12e0 07; 
+b0 13e0 07; 
+b0 14e0 07; 
+
+; Fix ana Rx term
+; b0 109a 89; 
+; b0 119a 89; 
+; b0 129a 89; 
+; b0 139a 89; 
+; b0 149a 89; 
+
+; dfe_spec_ref_tune=0
+b0 109a 09; 
+b0 119a 09; 
+b0 129a 09; 
+b0 139a 09; 
+b0 149a 09; 
+; ; ; 
+
+
+End
+
+
+:04-13 all:
+include this "01 GSU Power Up and Initialisation" "01-01 Chip Power Up"
+include this "01 GSU Power Up and Initialisation" "01-01 Chip Power Up"
+include this "01 GSU Power Up and Initialisation" "01-01 Chip Power Up"
+
+; ---PLL init---
+include this "01 GSU Power Up and Initialisation" "01-01-02 PLL no ssc init"; pll setup
+include this "01 GSU Power Up and Initialisation" "01-01-04 PLL with ssc init lpmode";  enable SSC
+
+; ---PLL debug---
+; include this "01 GSU Power Up and Initialisation" "01-01-04 PLL with Lower Freq init"
+; include this "01 GSU Power Up and Initialisation" "01-01-04 PLL with higher Freq init"
+
+; ---PHY all---
+; include this "01 GSU Power Up and Initialisation" "01-01-002 ANA for USB2.0"
+; include this "01 GSU Power Up and Initialisation" "01-01-12 NEW ANA Rx CDR SET, GOOD 1M USB3"
+; yfzhao add 20240419 for tx opt
+; include this "01 GSU Power Up and Initialisation" "01-01-14 ANA Tx SET, USB3"
+include this "01 GSU Power Up and Initialisation" "01-10 USB PHY ALL"	; use all function
+
+; ---PIPE all---
+include this "03 HUB_SS TEST" "03-37 five pipe digital"
+
+; 
+include this "04 PC Connect Test" "04-01 HUB2.0 UP PC_CONNCET"
+include this "04 PC Connect Test" "04-02 HUB_SS PC CONNECT"
+End
+
+
+:04-14 hub_2.0 all:
+include this "01 GSU Power Up and Initialisation" "01-01 Chip Power Up"
+include this "01 GSU Power Up and Initialisation" "01-01 Chip Power Up"
+include this "01 GSU Power Up and Initialisation" "01-01 Chip Power Up"
+
+; ---PLL init---
+include this "01 GSU Power Up and Initialisation" "01-01-02 PLL no ssc init"
+
+
+; ---PHY all---
+; include this "01 GSU Power Up and Initialisation" "01-01-002 ANA for USB2.0"
+; include this "01 GSU Power Up and Initialisation" "01-01-12 NEW ANA Rx CDR SET, GOOD 1M USB3"
+; yfzhao add 20240419 for tx opt
+; include this "01 GSU Power Up and Initialisation" "01-01-14 ANA Tx SET, USB3"
+include this "01 GSU Power Up and Initialisation" "01-10 USB PHY ALL"	; use all function
+
+
+; 
+include this "04 PC Connect Test" "04-01 HUB2.0 UP PC_CONNCET"
+End
+
+
+:04-15 hub_fs all:
+include this "01 GSU Power Up and Initialisation" "01-01 Chip Power Up"
+include this "01 GSU Power Up and Initialisation" "01-01 Chip Power Up"
+include this "01 GSU Power Up and Initialisation" "01-01 Chip Power Up"
+
+; ---PLL init---
+include this "01 GSU Power Up and Initialisation" "01-01-02 PLL no ssc init"
+
+
+; ---PHY all---
+; include this "01 GSU Power Up and Initialisation" "01-01-002 ANA for USB2.0"
+; include this "01 GSU Power Up and Initialisation" "01-01-12 NEW ANA Rx CDR SET, GOOD 1M USB3"
+; yfzhao add 20240419 for tx opt
+; include this "01 GSU Power Up and Initialisation" "01-01-14 ANA Tx SET, USB3"
+include this "01 GSU Power Up and Initialisation" "01-10 USB PHY ALL"	; use all function
+
+
+; 
+include this "04 PC Connect Test" "04-00 HUB1.1 UP PC_CONNCET"
+End
+
+
+:04-16 all_up_support_long_channel:
+
+; ---avoid i2c glitch----
+include this "01 GSU Power Up and Initialisation" "01-01 Chip Power Up"
+
+; ---hub force rstn---
+B0 0964 00;  hub rst
+
+; ---PLL init---
+include this "01 GSU Power Up and Initialisation" "01-01-02 PLL no ssc init"
+
+; ---RAM set---
+include this "01 GSU Power Up and Initialisation" "01-01-05 ANA Rx RAM EQ"
+
+; ---PHY all---
+include this "01 GSU Power Up and Initialisation" "01-10 USB PHY ALL"	; use all function
+
+; ---UP add seg adaptive ability---
+include this "01 GSU Power Up and Initialisation" "01-01-12 USB3 Upcdr adaptive param"
+
+; ---PIPE all---
+include this "03 HUB_SS TEST" "03-37 five pipe digital"
+
+; ---pipe UP use seg ability, EYE mode---
+include this "03 HUB_SS TEST" "03-50 only pipe up eq set"
+
+; 
+include this "04 PC Connect Test" "04-01 HUB2.0 UP PC_CONNCET"
+include this "04 PC Connect Test" "04-02 HUB_SS PC CONNECT"
+
+
+End
+
+
+
+##05 retimer##
+:05-00 retimer only:
+; disable usb2 ana
+b0 0a00 ff; 
+b0 0b00 ff; 
+; b0 0c00 ff; 
+; b0 0d00 ff; 
+; b0 0e00 ff; 
+; fix ana rx term
+b0 109a 08; 
+b0 119a 08; 
+; b0 129a 08; 
+; b0 139a 08; 
+; b0 149a 08; 
+; retimer mode rxterm=7
+b0 1057 07; 
+b0 1157 07; 
+; b0 1257 07; 
+; b0 1357 07; 
+; b0 1457 07; 
+; 
+b0 095f 05; switch route sel = 5,pipe0+pipe1
+b0 0964 06; retimer rstn =1
+; 
+b0 3152 4f; rx powerdown man
+b0 314f 20; tx p_state man
+b0 3150 01; 
+; 
+b0 4000 f9; 1us div
+b0 400e 00; cp mode = 0
+b0 40e2 08; u2 inactive done had bug so go u2 auto
+b0 40e3 01; fix rxdet jump out step7
+b0 4081 00; u2 min fix for cover u1
+b0 4082 40; 
+b0 4083 2c; 
+b0 40f0 03; rg_statble_cnt,if so big,may tsx error handshake
+; 
+b0 3252 4f; rx powerdown man
+b0 324f 20; tx p_state man
+b0 3250 01; 
+; 
+b0 4100 f9; 1us div
+b0 410e 00; cp mode = 0
+b0 41e2 08; u2 inactive done had bug so go u2 auto
+b0 41e3 01; fix rxdet jump out step7
+b0 4181 00; u2 min fix for cover u1
+b0 4182 40; 
+b0 4183 2c; 
+b0 41f0 03; rg_statble_cnt,if so big,may tsx error handshake
+; 
+
+End
+
+:05-01 retimer skp mode 0:
+b0 31c8 18; skp remove up limit,if we no ssc,should bigger,fifo is 32
+b0 31d3 10; 16 dn limit
+b0 31d2 00; skp add mode 0 for pipe
+b0 40e7 c4; retimer skp fifo mode 1,input skp rm
+b0 40e8 70; retimer skp fifo read start num = 7
+b0 40e9 a7; retimer skp cnt 167
+; 
+b0 32c8 18; skp remove up limit,if we no ssc,should bigger,fifo is 32
+b0 32d3 10; 16 dn limit
+b0 32d2 00; skp add mode 0 for pipe
+b0 41e7 c4; retimer skp fifo mode 1,input skp rm
+b0 41e8 70; retimer skp fifo read start num = 7
+b0 41e9 a7; retimer skp cnt 167
+End
+
+:05-02 retimer skp mode 1:
+b0 31c8 18; skp remove up limit,if we no ssc,should bigger,fifo is 32
+b0 31d3 10; 16 dn limit
+b0 31d2 20; skp add mode 1 for pipe
+b0 31d1 10; mode1 dn limit
+b0 31d5 0c; mode1 dn limit0
+b0 31d6 0a; mode1 dn limit1
+b0 31fa 08; mode1 dn limit2
+b0 31fb 12; mode1 insert 0+1
+b0 31fc 48; mode1 insert 2+3
+b0 40e7 A0; retimer skp nofifo mode 1,input skp not rm,skp bypass
+; 
+b0 32c8 18; skp remove up limit,if we no ssc,should bigger,fifo is 32
+b0 32d3 10; 16 dn limit
+b0 32d2 20; skp add mode 1 for pipe
+b0 32d1 10; mode1 dn limit
+b0 32d5 0c; mode1 dn limit0
+b0 32d6 0a; mode1 dn limit1
+b0 32fa 08; mode1 dn limit2
+b0 32fb 12; mode1 insert 0+1
+b0 32fc 48; mode1 insert 2+3
+b0 41e7 A0; retimer skp nofifo mode 1,input skp not rm,skp bypass
+End
+
+:05-98 retimer-dp1 cp test:
+b0 40e3 00; fix rxdet jump out step7
+b0 400e 02; cp mode en
+b0 4004 ff; 24ms never time out
+b0 4005 ff; 
+
+b0 41e3 00; fix rxdet jump out step7
+b0 410e 02; cp mode en
+b0 4104 ff; 24ms never time out
+b0 4105 ff; 
+
+b0 3228 06; pipe dp1 man rxdet = 1
+End
+
+:05-99 retimer-all:
+include this "01 GSU Power Up and Initialisation" "01-01 Chip Power Up"
+include this "01 GSU Power Up and Initialisation" "01-01 Chip Power Up"
+include this "01 GSU Power Up and Initialisation" "01-01 Chip Power Up"
+
+include this "01 GSU Power Up and Initialisation" "01-01-02 PLL no ssc init"
+
+; include this "01 GSU Power Up and Initialisation" "01-01-04 PLL with ssc init"
+; include this "01 GSU Power Up and Initialisation" "01-01-12 NEW ANA Rx CDR SET, GOOD 1M USB3"
+; yfzhao add 20240419 for tx opt
+; include this "01 GSU Power Up and Initialisation" "01-01-14 ANA Tx SET, USB3"
+
+include this "01 GSU Power Up and Initialisation" "01-10 USB PHY ALL"	; use all function
+
+include this "04 PC Connect Test" "04-08 all pipe disable eq start/ebuf rst auto"
+; include this "04 PC Connect Test" "04-09 all pipe enable cdr tracking auto"
+; 
+; default is freq man = 1
+; include this "04 PC Connect Test" "04-12 all cdr freqtrack man en = 0"
+; 
+include this "05 retimer" "05-00 retimer only"
+; include this "05 retimer" "05-01 retimer skp mode 0"
+include this "05 retimer" "05-02 retimer skp mode 1"
+; 
+include this "03 HUB_SS TEST" "03-35 pipe no lowpower"
+; 
+include this "03 HUB_SS TEST" "03-36 dp2/dp3 debug retimer up/dn"
+; 
+End
+
+
+##06 GSE chip scripts##
+
+
+; ===============GSE NOTE==================
+; ====GSE i2c page copy from gsu1001es3====
+; ======put i2c in gsu1001es3==============
+; ========for FAST debug===================
+; ===============GSE NOTE==================
+
+
+:06-01 gse pll init:
+
+; ---USB2 PLL && USB3 PLL init---
+include this "01 GSU Power Up and Initialisation" "01-01-02 PLL no ssc init"
+
+End
+
+
+:06-01-01 gse pll ssc enable:
+
+; yfzhao NOTE
+; this scripts need switch all dig clock to RXCPLL
+; 
+; USE for GSE dig clk switch
+
+
+B0 05b0 88 ;; SEL RxcPLL ref clk from outside 
+B0 05F5 05 ;; SEL USB3 PLL ref clk from U2 PLL REFclk
+
+b0 041f 81 ;rxc prediv man=1
+b0 0420 00 ;rxc postdiv25
+b0 0421 19 ;rxc postdiv25
+
+
+B0 06B6 00; 
+B0 06B7 00; 
+B0 06B8 00; 
+B0 06B9 80; 
+
+; SET PPM=5000, ssc_f_code_delta
+
+B0 06B1 FA; 
+B0 06B2 DB; 
+B0 06B3 03; 
+B0 06B4 00; 
+
+; SET i2c_ssc_init_dp_man
+B0 06B5 09; 
+
+; SET SSC_EN
+B0 06C0 1F; 
+
+b0 0423 43;  rxcpll on
+
+;CLK mux for u1001
+;b0 0902 33; dig clk sel to RXc
+;b0 09cc 1f; phy tx clksel=rxc
+
+
+; global and phy CLK mux 
+b0 0902 33; dig clk sel to RXc
+b0 09cc 01; phy tx clksel=rxc, mpll600mode=0
+
+
+End
+
+:06-01-02 USB2v2 UP POWERDOWN:
+
+b0 0950 2a;  up powerdown
+
+b0 4200 06;  rprd bypass
+b0 4202 08;  usb2 phy clk off
+b0 4204 00;  i2c set 0
+b0 4205 00;  i2c set 0
+b0 4206 00;  i2c set 0
+b0 4207 00;  i2c set 0
+b0 4208 00;  i2c set 0
+b0 4209 00;  i2c set 0
+b0 420a 00;  i2c set 0
+b0 420b 00;  i2c set 0
+b0 420c 00;  i2c set 0
+b0 420d 00;  i2c set 0
+b0 420e 00;  i2c set 0
+b0 420f 00;  i2c set 0
+b0 4210 00;  i2c set 0
+b0 4211 00;  i2c set 0
+b0 4212 00;  i2c set 0
+
+b0 421B 00;  rprd set to 0
+
+
+End
+
+
+:06-01-03 USB3 UP RX LPmode debug:
+
+; =======yfzhao NOTE=======
+; CTLE main parameter
+; when short cable
+; 	prevga=4 post_vga=4 khp_t=1 pole_cur_old=0 pole_cap=3 ctle_zero=4
+; when 3M cable
+; 	khp_t=11
+; when 10M cable(need adaptive mode)
+; 	khp_t=1111
+
+b0 10ec 4D;  prevga=4
+b0 104C 01;  khp_t=1
+b0 1099 30;  enable pi 64step
+
+End
+
+:06-01-04 USB2v2 UP mode2:
+
+;  UPv2
+B0 4229 0A;  dsel_mode=2
+B0 422A 0C;  date_buf_sel=12
+B0 476A 01;  utm_eop_cnt=1
+
+End
+
+:06-01-05 saradcv2 enable:
+
+b0 64a1 04; clkdiv=4
+b0 64a2 10; refsel=1
+b0 64a3 10; sample_ctrl=1
+b0 64a7 30; auto=1, cali=1
+b0 64a0 A0; poweron, waitcalib
+;b0 64a0 21; poweron, start=1
+
+; 64a6, temp=(rb-92.4577)/1.0506
+
+; 64a8, DCTEST
+; 64a9, PVDD
+; 64ab, tvdd/2
+; 64ac, avdd
+; 64ad, vddc
+
+
+End
+
+:06-01-07 Set pipe_up send clkdiv10:
+
+; step1, send PRBS
+include this "03 HUB_SS TEST" "03-01 PIPE-up Tx/Rx PRBS"
+
+; switch to fixed_20b
+B0 311C 20; 
+
+; <*10>1 <*10>0
+B0 3121 9F; 
+B0 3122 FF; 
+
+B0 3126 80; 
+B0 3127 00; 
+End
+
+:06-02 gse phy init:
+
+; ---usb2 phy set---
+include this "01 GSU Power Up and Initialisation" "01-05-04 USB2v2 UP ANA"
+; ---usb2 utmi bug workaround---
+include this "06 GSE chip scripts" "06-01-04 USB2v2 UP mode2"
+
+; ---usb3 phy set---
+include this "01 GSU Power Up and Initialisation" "01-06-01 PIPE ANA UP"
+include this "01 GSU Power Up and Initialisation" "01-07-01 USB3 UP Rx ANA"
+
+; ---ADC start---
+;include this "01 GSU Power Up and Initialisation" "01-01-03 ADC test"	; ADC initial to ch0
+include this "06 GSE chip scripts" "06-01-05 saradcv2 enable"
+End
+
+
+
+
+:06-20 gse usb set all:
+
+; ---include power up---
+include this "01 GSU Power Up and Initialisation" "01-01 Chip Power Up"
+include this "01 GSU Power Up and Initialisation" "01-01 Chip Power Up"
+include this "01 GSU Power Up and Initialisation" "01-01 Chip Power Up"
+
+; ---hub remove reset---
+include this "01 GSU Power Up and Initialisation" "01-01-002 Hub_remove_reset"
+
+; ---gse pll init---
+include this "06 GSE chip scripts" "06-01 gse pll init"
+
+;ssc enable 
+;include this "06 GSE chip scripts" "06-01-01 gse pll ssc enable"
+
+; ---gse phy init---
+include this "06 GSE chip scripts" "06-02 gse phy init"
+
+; ---gse pipe init---
+include this "03 HUB_SS TEST" "03-43 pipe up dig init for gse"
+
+
+End
+
+
+
+##11 USB DEBUG FUNCTION##
+
+:11-01 dp4 debug up usb2v2 adbug3:
+
+; sel addr=0x42 0x20 
+; see usb2v2cdr mux define
+
+b0 09c4 21;  misc debug sel
+b0 09c7 00;  misc debug io sel
+
+include this "03 HUB_SS TEST" "03-31 up debug testdata"
+
+End
