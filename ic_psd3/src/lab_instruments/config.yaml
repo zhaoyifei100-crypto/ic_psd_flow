@@ -1,0 +1,18 @@
+instruments:
+  vsource_main:
+    type: E3631a
+    params:
+      gpib: 6
+      setMaxLimit: true
+  
+  vsource_aux:
+    type: E3648a
+    params:
+      gpib: 7
+      setMaxLimit: true
+  
+  temp_controller:
+    type: TemperatureController
+    params:
+      ip_address: '192.168.6.211'
+      port: 3000
