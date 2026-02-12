@@ -41,8 +41,8 @@ ic_psd3/
 
 ├── library/                     # 测试库层（Common Functions）
 │       ├── aves_class.py       # auto gen from AVES scripts
+│       ├── auto_class.py       # auto gen autoclass for designer使用IDE的自动补全功能
 │       ├── usb_common_class.py       # usb公用的common class
-                                        # 这个文件应该要统一管理，TODO
 │       └── psd3_class.py     # 本项目特有的 PSD3 chip function class
 
 │

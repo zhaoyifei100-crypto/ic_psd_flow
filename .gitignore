@@ -2,11 +2,14 @@
 ic_psd2/models/*
 ic_psd2/.chip-builder/*
 ic_psd2/output/*
-ic_psd2/scripts/__pycache__
+# Ignore all __pycache__ directories recursively
+**/__pycache__/
 
-ic_psd3/src/__pycache__
-ic_psd3/src/psd_bridge/__pycache__
-ic_psd3/library/__pycache__
+# Ignore .pyc files
+*.pyc
+*.pyo
+*.pyd
+.Python
 
 
 #project testuse
