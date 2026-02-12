@@ -5,7 +5,11 @@ ic_psd2/output/*
 ic_psd2/scripts/__pycache__
 
 ic_psd3/src/__pycache__
+ic_psd3/src/psd_bridge/__pycache__
+ic_psd3/library/__pycache__
+
 
 #project testuse
 ic_psd3/library/import/gsu1001_2025_nto_scripts.txt
 ic_psd3/library/import/GSU1K1_NTO.xml
+ic_psd3/library/aves_class.py

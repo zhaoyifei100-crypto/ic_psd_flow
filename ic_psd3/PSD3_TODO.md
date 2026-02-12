@@ -20,7 +20,7 @@ ic_psd3/
 │   ├── hw_bridge/                 # 硬件驱动
 │   ├── lab_instruments/        # lab instruments
 │   └── psd_bridge/                 # PSD2toPSD3 bridge
-│       ├── auto_class_gen.py    # AutoClass生成器
+│       ├── aves_converter.py    # AVESClass自动生成器
 │       └── reg_converter.py     # AutoClass→I2C转换器
 │
 ├── framework/                   # 测试框架层
