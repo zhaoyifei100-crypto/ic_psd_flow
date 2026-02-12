@@ -75,6 +75,23 @@ ic_psd3/
 
 ## 2. 核心组件设计
 
+### 2.0 测试前准备工作
+
+芯片XML寄存器描述：
+    ic_psd3/import/GSU1K1_NTO.xml
+芯片AVES script：
+    ic_psd3/import/gsu1001_2025_nto_scripts.txt
+
+生成两个class：
+    auto_class.py，用于designer在IDE中快速查找寄存器
+    aves_class.py，用于AVES脚本生成python基础类
+
+现成的芯片python函数：
+    gsu1001_phy_scripts.py -> usb_common_class.py
+    这里根据芯片功能划分
+    芯片功能加减 -> common_class的多少
+
+
 ### 2.1 Test Flow Pipeline
 
 基于README.md定义的5步工作流：
