@@ -1,0 +1,85 @@
+Metadata-Version: 2.4
+Name: hw-bridge
+Version: 0.1.0
+Summary: Hardware bridge library for I2C communication with FTDI and Raspberry Pi
+License: MIT
+Project-URL: Homepage, https://github.com/yourusername/hw-bridge
+Project-URL: Repository, https://github.com/yourusername/hw-bridge
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: System :: Hardware
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+Provides-Extra: dev
+Requires-Dist: pytest>=6.0; extra == "dev"
+Requires-Dist: black>=22.0; extra == "dev"
+Requires-Dist: flake8>=4.0; extra == "dev"
+
+# hw-bridge
+
+Hardware bridge library for I2C communication with FTDI and Raspberry Pi.
+
+## Features
+
+- Unified I2C interface across Windows (FTDI) and Linux (Raspberry Pi)
+- Mock driver for testing without hardware
+- Configuration file support (YAML/JSON)
+- Support for 16-bit address format (addr1 + addr2)
+
+## Installation
+
+```bash
+pip install -e .
+```
+
+## Quick Start
+
+```python
+from hw_bridge import create_device
+
+# Create device from config
+device = create_device("ftdi", i2c_port=0, chip_addr=0x58)
+device.open()
+
+# Read/Write registers
+value = device.read_reg(0x26, 0x00)
+device.write_reg(0x26, 0x00, 0xFF)
+
+# Bit operations
+device.write_bits(0x26, 0x01, lsb=2, bits=4, value=0x0A)
+value = device.read_bits(0x26, 0x01, lsb=2, bits=4)
+
+device.close()
+```
+
+## Configuration File
+
+```yaml
+# config.yaml
+hardware:
+  driver_type: ftdi  # ftdi, pi, or mock
+  i2c_port: 0
+  chip_addr: 0x58
+  ftdi:
+    dll_path: "./libMPSSE.dll"
+  pi:
+    use_smbus: false
+```
+
+## Supported Drivers
+
+- **ftdi**: FTDI USB-to-I2C adapter (Windows)
+- **pi**: Raspberry Pi I2C bus (Linux)
+- **mock**: Mock driver for testing
+
+## License
+
+MIT

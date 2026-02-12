@@ -1,0 +1,17 @@
+README.md
+pyproject.toml
+src/hw_bridge/__init__.py
+src/hw_bridge/device_manager.py
+src/hw_bridge/factory.py
+src/hw_bridge/interfaces.py
+src/hw_bridge.egg-info/PKG-INFO
+src/hw_bridge.egg-info/SOURCES.txt
+src/hw_bridge.egg-info/dependency_links.txt
+src/hw_bridge.egg-info/requires.txt
+src/hw_bridge.egg-info/top_level.txt
+src/hw_bridge/drivers/__init__.py
+src/hw_bridge/drivers/ftdi_driver.py
+src/hw_bridge/drivers/mock_driver.py
+src/hw_bridge/drivers/pi_driver.py
+src/hw_bridge/utils/__init__.py
+src/hw_bridge/utils/config.py

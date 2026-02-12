@@ -1,0 +1,35 @@
+# hw_bridge 配置文件示例
+# 支持 YAML 格式
+
+hardware:
+  # 驱动类型: ftdi, pi, mock
+  driver_type: mock
+  
+  # I2C 设备地址 (7-bit格式)
+  chip_addr: 0x58
+  
+  # I2C 端口/总线号
+  # FTDI: 0 或 1 (对应 FTDI 双端口的 A/B 通道)
+  # Raspberry Pi: 1 (对应 /dev/i2c-1)
+  i2c_port: 0
+  
+  # 是否启用 AVES 脚本日志
+  aves_write: false
+  
+  # AVES 脚本输出路径
+  aves_path: "./to_aves/"
+  
+  # FTDI 驱动专用配置
+  ftdi:
+    # DLL 路径 (可选,默认使用包内的 libMPSSE.dll)
+    dll_path: "./libMPSSE.dll"
+    # I2C 时钟频率 (Hz)
+    # 100000 = 100kHz (标准模式)
+    # 400000 = 400kHz (快速模式,默认)
+    # 1000000 = 1MHz (快速+模式)
+    clock_rate: 400000
+  
+  # Raspberry Pi 驱动专用配置
+  pi:
+    # i2ctransfer 命令路径
+    i2ctransfer_path: "/usr/sbin/i2ctransfer"
