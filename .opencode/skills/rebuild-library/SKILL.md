@@ -52,9 +52,9 @@ rm -rf library/*
 ✅ 已清空 ic_psd3/library/ 目录，准备重新生成...
 ```
 
-### 步骤 3：生成 auto_class.py
+### 步骤 3：生成 auto_class.py 和 reg_define.py
 
-使用 unified_generator 处理 XML 文件：
+使用 unified_generator 处理 XML 文件，生成两个文件：
 
 ```bash
 cd ic_psd3
@@ -62,8 +62,8 @@ python -m src.psd_bridge.unified_generator <XML_FILE_PATH>
 ```
 
 执行后，检查输出：
-- 生成文件：`ic_psd3/library/auto_class.py`
-- 显示统计信息：页面数、寄存器数等
+- 生成文件 1：`ic_psd3/library/auto_class.py` - IDE 自动补全类
+- 生成文件 2：`ic_psd3/library/reg_define.py` - PAGE 地址常量定义
 
 向用户说明：
 ```
@@ -71,12 +71,22 @@ python -m src.psd_bridge.unified_generator <XML_FILE_PATH>
 
 - 用途：IDE 自动补全，快速查找寄存器
 - 结构：嵌套类 AutoClass.PAGE.register
-- 大小：约 85K 行（包含所有寄存器定义）
+- 大小：约 2.3 MB（包含所有寄存器定义）
 
 示例用法：
   from library.auto_class import AutoClass
   AutoClass.PAGE0.REG_NAME.r()      # 读寄存器
   AutoClass.PAGE0.REG_NAME.w(0xFF)  # 写寄存器
+
+✅ reg_define.py 生成成功
+
+- 用途：PAGE 地址常量定义
+- 内容：所有 38 个 PAGE 的 I2C 地址（如 AG=0x06）
+- 大小：约 3 KB
+
+示例用法：
+  from library.reg_define import AG, AnaPll, CdrDp1
+  device.read_reg(AG, 0x00)  # 使用常量读寄存器
 ```
 
 ### 步骤 4：生成 aves_class.py
@@ -119,15 +129,18 @@ ls -lh ic_psd3/library/*.py
 ✅ library 重新生成完成！
 
 生成的文件：
-  📄 auto_class.py     (IDE 自动补全)
-  📄 aves_class.py     (AVES 配置脚本)
+  📄 auto_class.py     (2.3 MB  - IDE 自动补全)
+  📄 reg_define.py     (3 KB    - PAGE 地址常量)
+  📄 aves_class.py     (241 KB  - AVES 配置脚本)
 
 验证方法：
   1. import library.auto_class - 检查 IDE 补全
-  2. import library.aves_class - 检查语法正确性
+  2. import library.reg_define - 检查 PAGE 常量
+  3. import library.aves_class - 检查语法正确性
 
 后续步骤：
   - 使用 auto_class.py 在 IDE 中编写配置脚本
+  - 使用 reg_define.py 中的常量访问寄存器
   - 使用 aves_class.py 运行 AVES 初始化流程
 ```
 
@@ -155,12 +168,16 @@ ls -lh ic_psd3/library/*.py
 [执行步骤 2 - 清空 library]
 ✅ library 目录已清空
 
-[执行步骤 3 - 生成 auto_class.py]
+[执行步骤 3 - 生成 auto_class.py 和 reg_define.py]
 正在处理 XML 文件...
 ✅ auto_class.py 生成成功
   - 38 个 PAGE
   - 7,136 个寄存器
   - 文件大小：2.3 MB
+
+✅ reg_define.py 生成成功
+  - 38 个 PAGE 常量定义
+  - 文件大小：3 KB
 
 [执行步骤 4 - 生成 aves_class.py]
 正在处理 AVES 脚本...
@@ -173,20 +190,22 @@ ls -lh ic_psd3/library/*.py
 
 生成的文件：
   📄 auto_class.py     (2.3 MB)
+  📄 reg_define.py     (3 KB)
   📄 aves_class.py     (125 KB)
 
 现在你可以：
 1. 在 IDE 中使用 auto_class.py 进行自动补全
-2. 运行 aves_class.py 中的 AVESChipConfig 类
+2. 使用 reg_define.py 中的常量访问寄存器
+3. 运行 aves_class.py 中的 AVESChipConfig 类
 
 ---
 
 ## 命令参考
 
-### unified_generator - 生成 auto_class.py
+### unified_generator - 生成 auto_class.py 和 reg_define.py
 
 ```bash
-# 仅生成 AutoClass（XML -> auto_class.py）
+# 仅生成 AutoClass 和 reg_define（XML -> auto_class.py + reg_define.py）
 python -m src.psd_bridge.unified_generator <XML_FILE>
 
 # 示例
@@ -198,6 +217,7 @@ python -m src.psd_bridge.unified_generator ic_psd3/import/GSU1K1_NTO.xml
 
 **输出：**
 - `ic_psd3/library/auto_class.py` - IDE 补全类
+- `ic_psd3/library/reg_define.py` - PAGE 地址常量定义
 
 ---
 
@@ -255,6 +275,16 @@ from library.auto_class import AutoClass
 # 在 IDE 中输入会自动补全
 AutoClass.PAGE0.REG_NAME.r()      # 读寄存器
 AutoClass.PAGE0.REG_NAME.w(0xFF)  # 写寄存器
+```
+
+### 使用 reg_define.py
+
+```python
+from library.reg_define import AG, AnaPll, CdrDp1, Misc
+
+# 使用常量访问寄存器
+device.read_reg(AG, 0x00)       # 读 AG page
+device.write_reg(AnaPll, 0x10)  # 写 AnaPll page
 ```
 
 ### 使用 aves_class.py

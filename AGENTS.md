@@ -13,11 +13,29 @@ This is a chip validation workflow repository containing:
 
 ## Build / Test / Lint Commands
 
-### Python Environment
+### Python Environment Setup
+
+**Always use virtual environment (VENV) for all operations:**
+
 ```bash
+# Create virtual environment (one-time setup)
+python3 -m venv .venv
+
+# Activate virtual environment
+source .venv/bin/activate          # macOS/Linux
+# OR
+.venv\Scripts\activate             # Windows
+
+# Install dependencies
 pip install -r requirements.txt
 cd ic_psd3/src/hw_bridge && pip install -e .
+cd ../../..                       # Return to project root
+
+# Deactivate when done
+deactivate
 ```
+
+**Important**: All Python commands must run **within the activated VENV**.
 
 ### Code Quality Tools (configured in pyproject.toml)
 ```bash
@@ -157,9 +175,10 @@ class IDevice(ABC):
 
 ### Git Workflow
 - Write descriptive commit messages
-- Do not commit without explicit user request
+- **Do NOT commit automatically** - Only commit when user explicitly requests it
 - Never commit secrets, credentials, or sensitive data
 - Keep `.gitignore` updated
+- Warn users before committing generated files or sensitive data
 
 ## Testing
 

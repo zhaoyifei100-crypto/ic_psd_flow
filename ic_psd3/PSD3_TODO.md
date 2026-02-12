@@ -98,7 +98,11 @@ ic_psd3/
 基于README.md定义的5步工作流：
 
 ```
-test_spec.md (自然语言规格)
+start
+↓
+rebuild library（XML AVES，需要designer提供）
+↓
+test_spec.md (自然语言规格，需要designer提供)
     ↓ [opencode agent]
 customer_xxx_test.py (需要designer编辑)
     ↓ [Final Generator: AutoClass→I2C转换]
