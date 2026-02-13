@@ -1212,5 +1212,10 @@ if __name__ == "__main__":
         )
         builder.export_excel(excel_path)
         print(f"已导出: {excel_path}")
+
+        # 同时导出状态 JSON
+        state_path = os.path.join(output_dir, "xml_state.json")
+        builder.export_json(state_path)
+        print(f"已导出: {state_path}")
     else:
-        print("用法: python chip_builder.py <config.xlsx> [output_dir]")
+        print("用法: python chip_builder.py <config.yaml> [output_dir]")
