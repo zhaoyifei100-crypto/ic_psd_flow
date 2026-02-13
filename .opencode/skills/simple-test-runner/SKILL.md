@@ -111,7 +111,7 @@ Agent:
 ## TestSpec 格式示例
 
 ```markdown
-# USB3 PRBS 测试
+# PHY USB3 PRBS 测试
 
 ## 设备
 - dut: GSU1K1 (i2c_port: 0, chip_addr: 0x58, type: ftdi)
