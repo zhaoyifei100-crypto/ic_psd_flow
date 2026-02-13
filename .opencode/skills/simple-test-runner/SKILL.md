@@ -150,6 +150,14 @@ Agent:
 - 所有生成文件使用覆盖模式
 
 
+**简化的导入hw_bridge方式**:
+```python
+# hw_bridge 已作为 pip install -e . 安装到 venv 中
+# 无需添加 sys.path 手动指向源代码
+from hw_bridge import DeviceManager  # ✓ 直接导入
+
+```
+
 ## 常见踩坑 ⚠️
 
 ### 1. class导入方法选择 🎯
@@ -182,10 +190,12 @@ USBCommonClass = usb_module.USBCommonClass
 # Setup path for imports
 script_dir = Path(__file__).parent
 # From: ic_psd3/tests/generated/<test_name>/test_script.py
-# To:   ic_psd_flow/ (root) - 5 层路径
-proj_root = script_dir.parent.parent.parent.parent.parent
-lib_path = proj_root / "ic_psd3" / "library"
-sys.path.insert(0, str(proj_root / "ic_psd3" / "src"))
+# To:   ic_psd3/ (go up 3 levels)
+ic_psd3_root = script_dir.parent.parent.parent
+lib_path = ic_psd3_root / "library"
+
+# 仅需添加库路径（hw_bridge 已通过 pip install -e 安装到 venv）
+sys.path.insert(0, str(lib_path))
 
 import importlib.util
 
@@ -203,14 +213,16 @@ def load_library_module(module_name: str):
     spec.loader.exec_module(module)
     return module
 
+# hw_bridge 已作为 pip 包安装，可直接导入
+# （不再需要添加 sys.path 指向其源代码）
+from hw_bridge import DeviceManager
+
 # 直接提取类（简洁且易读）
 usb_module = load_library_module("usb_common_class")
 USBCommonClass = usb_module.USBCommonClass
 
 aves_module = load_library_module("aves_class")
 AVESChipConfig = aves_module.AVESChipConfig
-
-from hw_bridge import DeviceManager
 ```
 
 **优点**:

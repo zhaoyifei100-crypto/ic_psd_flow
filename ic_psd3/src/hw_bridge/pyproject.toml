@@ -36,7 +36,7 @@ Homepage = "https://github.com/yourusername/hw-bridge"
 Repository = "https://github.com/yourusername/hw-bridge"
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["."]
 
 [tool.black]
 line-length = 100
