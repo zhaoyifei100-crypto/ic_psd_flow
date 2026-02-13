@@ -10,6 +10,7 @@ ic_psd2/output/*
 *.pyo
 *.pyd
 .Python
+.venv
 
 
 # Ignore generated AutoClass files
