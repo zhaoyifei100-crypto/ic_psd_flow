@@ -29,9 +29,12 @@ python runner.py <testspec.md> --dry-run
 ```
 
 这会：
-1. 扫描 `ic_psd3/library/*.py` 构建函数索引
-2. 生成 `library_index.json` 到测试输出目录
-3. **AGENT 现在可以基于索引生成代码**
+1. **复制整个 `ic_psd3/library/` 到测试目录**（环境快照）
+2. 扫描本地 library 构建函数索引
+3. 生成 `library_index.json` 到测试输出目录
+4. **AGENT 现在可以基于索引生成代码**
+
+**环境隔离**：每个测试都有自己的 library 快照，顶层文件的修改不会影响已通过的测试。
 
 ### 第二步：AGENT 生成代码
 
@@ -53,7 +56,7 @@ python runner.py ic_psd3/tests/specs/phy/usb3_prbs.md --dry-run
 
 # 2. AGENT 生成代码（AGENT 自动完成）
 # AGENT 读取 testspec.md 和 library_index.json
-# AGENT 生成 ic_psd3/tests/generated/usb3_prbs/test_script.py
+# AGENT 生成 test_script.py
 
 # 3. 执行测试
 python runner.py ic_psd3/tests/specs/phy/usb3_prbs.md
@@ -63,11 +66,21 @@ python runner.py ic_psd3/tests/specs/phy/usb3_prbs.md
 
 ```
 ic_psd3/tests/generated/<test_name>/
+├── library/                # 库环境快照（dry-run 时复制）
+│   ├── usb_common_class.py
+│   ├── psd3_common_class.py
+│   ├── aves_class.py
+│   └── reg_define.py
 ├── library_index.json      # 库函数索引（AGENT 参考）
 ├── test_script.py          # AGENT 生成的可执行代码
 ├── exec.log               # 详细执行日志
 └── summary.json           # 结构化结果
 ```
+
+**环境隔离设计**：
+- `--dry-run` 阶段会复制整个 `ic_psd3/library/` 到测试目录
+- 后续执行使用**本地**library，确保已通过测试不受顶层修改影响
+- 如需重新同步库，删除 `library/` 目录后重新运行 `--dry-run`
 
 ## 参数说明
 
@@ -142,108 +155,46 @@ Agent:
    - 检查 PRBS {prbs_duration} 秒
 ```
 
+## 标准导入模板
+
+测试脚本位于 `ic_psd3/tests/generated/<test_name>/` 目录，Python 会自动将该目录加入 `sys.path`，因此直接导入即可：
+
+```python
+#!/usr/bin/env python3
+
+# 标准库
+import sys
+import time
+import json
+from pathlib import Path
+from datetime import datetime
+
+# 本地 library 模块（runner 在 dry-run 时已复制到测试目录）
+from library.usb_common_class import USBCommonClass
+from library.aves_class import AVESChipConfig
+from library.psd3_common_class import PSD3CommonClass
+
+# pip 安装的包
+from hw_bridge import DeviceManager
+```
+
+**重要说明**：
+- 无需修改 `sys.path`，当前目录已自动在 path 中
+- `library/` 是 dry-run 阶段复制的本地快照，确保环境隔离
+- `hw_bridge` 通过 `pip install -e ic_psd3/src/hw_bridge` 安装到 venv
+
 ## 注意事项
 - 在当前环境下新建venv，安装requirements.txt后执行，特别注意要安装ic_psd3/src/hw_bridge
 - library_index.json 位于每个测试的输出目录中
-- 扫描包含: usb_common_class.py, psd3_common_class.py, aves_class.py, reg_define.py
+- 扫描**本地**library[usb_common_class.py, psd3_common_class.py, aves_class.py, reg_define.py]
 - 代码生成完全由 AGENT 完成，本 Skill 只负责执行
 - 所有生成文件使用覆盖模式
 
-
-**简化的导入hw_bridge方式**:
-```python
-# hw_bridge 已作为 pip install -e . 安装到 venv 中
-# 无需添加 sys.path 手动指向源代码
-from hw_bridge import DeviceManager  # ✓ 直接导入
-
-```
-
 ## 常见踩坑 ⚠️
 
-### 1. class导入方法选择 🎯
-
-**问题**: 生成测试脚本时，导入库模块有多种方法。方法选择影响安全性、可维护性和代码简洁度。
-
-**方法对比**:
-
-| 方面 | 函数式（推荐）| 直接式 |
-|-----|-------------|--------|
-| 错误处理 | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ |
-| 复用性 | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ |
-| 代码简洁 | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| 添加模块 | 1 行 | 6 行 |
-
-**❌ 不推荐的直接式方法**:
-```python
-usb_spec = importlib.util.spec_from_file_location(
-    "usb_common_class", lib_path / "usb_common_class.py"
-)
-usb_module = importlib.util.module_from_spec(usb_spec)
-usb_spec.loader.exec_module(usb_module)  # 无错误处理，若 spec 为 None 会崩溃
-USBCommonClass = usb_module.USBCommonClass
-
-# 添加新模块需要重复上述代码...
-```
-
-**✓ 推荐的函数式方法（混合最佳实践）**:
-```python
-# Setup path for imports
-script_dir = Path(__file__).parent
-# From: ic_psd3/tests/generated/<test_name>/test_script.py
-# To:   ic_psd3/ (go up 3 levels)
-ic_psd3_root = script_dir.parent.parent.parent
-lib_path = ic_psd3_root / "library"
-
-# 仅需添加库路径（hw_bridge 已通过 pip install -e 安装到 venv）
-sys.path.insert(0, str(lib_path))
-
-import importlib.util
-
-def load_library_module(module_name: str):
-    """Load library module with error handling."""
-    spec = importlib.util.spec_from_file_location(
-        module_name, 
-        lib_path / f"{module_name}.py"
-    )
-    if not spec or not spec.loader:
-        raise ImportError(f"Cannot find module: {module_name}")
-    
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[module_name] = module
-    spec.loader.exec_module(module)
-    return module
-
-# hw_bridge 已作为 pip 包安装，可直接导入
-# （不再需要添加 sys.path 指向其源代码）
-from hw_bridge import DeviceManager
-
-# 直接提取类（简洁且易读）
-usb_module = load_library_module("usb_common_class")
-USBCommonClass = usb_module.USBCommonClass
-
-aves_module = load_library_module("aves_class")
-AVESChipConfig = aves_module.AVESChipConfig
-```
-
-**优点**:
-- ✓ 完整的错误处理（检查 spec 和 loader）
-- ✓ 添加新模块只需 3 行代码
-- ✓ 代码复用性最高
-- ✓ 中间异常明确，易于调试
-
-**使用示例**:
-```python
-# 添加 psd3_common_class - 只需 3 行
-psd3_module = load_library_module("psd3_common_class")
-PSD3CommonClass = psd3_module.PSD3CommonClass
-
-# 然后在脚本中使用
-psd3_obj = PSD3CommonClass()
-psd3_obj.some_method()
-```
 
 
-### 2. 类名混淆
+### 1. 类名混淆
 
 **问题**: 库中的类名与预期不符。
 
@@ -257,7 +208,7 @@ psd3_obj.some_method()
 grep "^class " ic_psd3/library/*.py
 ```
 
-### 3. DeviceManager API 错误
+### 2. DeviceManager API 错误
 
 **问题**: 使用了不存在的方法。
 
@@ -273,7 +224,7 @@ dut = dm.register(name="dut", driver_type="mock", i2c_port=0, chip_addr=0x58)
 dm.close_all()  # 清理
 ```
 
-### 4. 类初始化方式错误
+### 3. 类初始化方式错误
 
 **问题**: USBCommonClass 不是无参初始化的。
 
@@ -288,7 +239,7 @@ usb_class.set_device_manager(device_manager, "dut")
 usb_obj = usb_common.USBCommonClass(dut)  # 直接传设备对象
 ```
 
-### 5. 直接寄存器访问 vs 类方法
+### 4. 直接寄存器访问 vs 类方法
 
 **问题**: USBCommonClass 没有 `write_reg()` 方法，应通过设备对象访问。
 
@@ -304,7 +255,7 @@ dut.write_reg(CDR_UP_ADDR, 0x9E, 0x0F)  # 通过设备对象
 
 
 
-### 7. 模拟设备 vs 真实硬件驱动
+### 5. 模拟设备 vs 真实硬件驱动
 
 **问题**: 在非Windows系统运行，FTDI驱动不可用。
 
@@ -327,7 +278,7 @@ TEST_CONFIG = {
 - `ftdi` - 真实FTDI硬件（仅Windows + FTDI驱动）
 - `pi` - Raspberry Pi I2C（仅Pi系统）
 
-### 8. 缺失的作用域变量
+### 6. 缺失的作用域变量
 
 **问题**: 在 try 块中初始化的变量在 finally 块中使用。
 
@@ -352,7 +303,7 @@ finally:
 ```
 
 
-### 10. 库函数索引理解不完全
+### 7. 库函数索引理解不完全
 
 **问题**: 生成的 library_index.json 中函数签名需要仔细解读。
 

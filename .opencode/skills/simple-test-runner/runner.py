@@ -17,11 +17,26 @@ Date: 2026-02-13
 import argparse
 import json
 import re
+import shutil
 import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List
+
+
+def copy_library(source_dir: Path, dest_dir: Path) -> None:
+    """复制 library 目录到测试目录，作为环境快照。"""
+    if dest_dir.exists():
+        print(f"[INFO] 本地 library 已存在，跳过复制: {dest_dir}")
+        return
+
+    print(f"[INFO] 复制 library 到测试目录...")
+    try:
+        shutil.copytree(source_dir, dest_dir)
+        print(f"[INFO] 已复制 {len(list(source_dir.glob('*.py')))} 个文件到 {dest_dir}")
+    except Exception as e:
+        print(f"[WARN] 复制 library 失败: {e}")
 
 
 def scan_library(library_dir: str, output_dir: Path) -> Dict:
@@ -155,8 +170,25 @@ def main():
     print(f"[INFO] 测试: {spec_path.stem}")
     print(f"[INFO] 输出: {output_dir}\n")
 
+    # 确定使用的 library 目录
+    local_lib_dir = output_dir / "library"
+    source_lib_path = Path(args.library_dir)
+
+    if args.dry_run:
+        # dry-run: 复制源 library 到本地，然后扫描本地 library
+        copy_library(source_lib_path, local_lib_dir)
+        lib_to_scan = local_lib_dir
+    else:
+        # 执行阶段: 优先使用本地 library，如果不存在则使用源 library
+        if local_lib_dir.exists():
+            lib_to_scan = local_lib_dir
+            print(f"[INFO] 使用本地 library: {local_lib_dir}")
+        else:
+            lib_to_scan = source_lib_path
+            print(f"[INFO] 使用源 library: {source_lib_path}")
+
     # 步骤 1: 扫描库
-    library_index = scan_library(args.library_dir, output_dir)
+    library_index = scan_library(str(lib_to_scan), output_dir)
 
     # 步骤 2: 读取规格（由 AGENT 解析）
     with open(spec_path, "r", encoding="utf-8") as f:
