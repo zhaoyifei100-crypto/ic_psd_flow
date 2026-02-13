@@ -1,4 +1,4 @@
-# USB3 PRBS Test Spec
+# PHY USB3 PRBS Test Spec
 
 
 ## DUT
