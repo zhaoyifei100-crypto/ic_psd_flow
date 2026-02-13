@@ -30,8 +30,8 @@ python runner.py <testspec.md> --dry-run
 
 这会：
 1. **复制整个 `ic_psd3/library/` 到测试目录**（环境快照）
-2. 扫描本地 library 构建函数索引
-3. 生成 `library_index.json` 到测试输出目录
+2. 扫描本地 library 构建函数索引，生成 `library_index.json`
+3. **扫描 `ic_psd3/src/lab_instruments/instruments/` 下的所有驱动**，生成 `instruments.json`
 4. **AGENT 现在可以基于索引生成代码**
 
 **环境隔离**：每个测试都有自己的 library 快照，顶层文件的修改不会影响已通过的测试。
@@ -72,10 +72,17 @@ ic_psd3/tests/generated/<test_name>/
 │   ├── aves_class.py
 │   └── reg_define.py
 ├── library_index.json      # 库函数索引（AGENT 参考）
+├── instruments.json        # 仪器驱动索引（AGENT 参考）
 ├── test_script.py          # AGENT 生成的可执行代码
 ├── exec.log               # 详细执行日志
 └── summary.json           # 结构化结果
 ```
+
+**仪器驱动发现**：
+- `--dry-run` 时自动扫描 `ic_psd3/src/lab_instruments/instruments/` 目录
+- 提取每个驱动的类名、初始化参数、公开方法
+- 生成 `instruments.json` 供 AGENT 参考
+- 例如：`tt5166_tcp_ctr.py` → `TemperatureController` 类的详细信息
 
 **环境隔离设计**：
 - `--dry-run` 阶段会复制整个 `ic_psd3/library/` 到测试目录
@@ -95,16 +102,19 @@ python runner.py <testspec.md> [选项]
 
 ## 实现
 
-**单个文件**: `runner.py`（仅 199 行）
+**单个文件**: `runner.py`（约 280 行）
 
-**三个核心功能**:
+**核心功能**:
 1. `scan_library()` - 扫描库并构建索引
-2. `execute_test()` - 执行测试脚本，捕获输出
-3. `main()` - CLI 入口点
+2. `scan_instruments()` - 扫描仪器驱动并构建索引
+3. `extract_instrument_class()` - 提取驱动类信息和初始化参数
+4. `execute_test()` - 执行测试脚本，捕获输出
+5. `main()` - CLI 入口点
 
 **AGENT 职责**:
 - 解析 testspec.md
-- 使用 library_index.json 了解可用函数
+- 使用 library_index.json 了解可用芯片库函数
+- 使用 instruments.json 了解可用硬件驱动
 - 直接生成 test_script.py（带 MILESTONE 打印）
 - 调用 runner.py 执行测试
 
@@ -115,20 +125,22 @@ Designer: /run-test testspec.md
 
 Agent:
   1. 调用 runner.py --dry-run
-     → 生成 library_index.json
+      → 生成 library_index.json
+      → 生成 instruments.json
   
   2. AGENT 直接生成代码
-     → 读取 testspec.md
-     → 读取 library_index.json（了解可用函数）
-     → 生成 test_script.py（带里程碑打印）
+      → 读取 testspec.md
+      → 读取 library_index.json（了解可用函数）
+      → 读取 instruments.json（了解硬件驱动）
+      → 生成 test_script.py（带里程碑打印）
   
   3. **告知**designer代码已经生成，需要修改（如有）
       **提示**designer检查TODO
       **等待**designer确认代码无误
 
   4. 调用 runner.py（无 --dry-run）
-     → 执行 test_script.py
-     → 显示里程碑和结果
+      → 执行 test_script.py
+      → 显示里程碑和结果
 ```
 
 ## TestSpec 格式示例

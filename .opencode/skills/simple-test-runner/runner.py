@@ -22,7 +22,7 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 
 def copy_library(source_dir: Path, dest_dir: Path) -> None:
@@ -64,6 +64,38 @@ def scan_library(library_dir: str, output_dir: Path) -> Dict:
     return index
 
 
+def scan_instruments(instruments_dir: str, output_dir: Path) -> Dict:
+    """扫描 lab_instruments 并构建仪器驱动索引。"""
+    instr_path = Path(instruments_dir)
+    instruments_index_path = output_dir / "instruments.json"
+
+    print("[INFO] 扫描实验仪器驱动...")
+    if not instr_path.exists():
+        print(f"[WARN] 仪器目录不存在: {instr_path}，跳过扫描")
+        return {}
+
+    instruments = {}
+
+    # 扫描所有 .py 文件（除了 __init__.py 和 __pycache__）
+    for py_file in instr_path.glob("*.py"):
+        if py_file.name.startswith("__"):
+            continue
+
+        class_info = extract_instrument_class(py_file)
+        if class_info:
+            instruments[py_file.stem] = class_info
+
+    # 保存仪器索引到测试目录
+    if instruments:
+        with open(instruments_index_path, "w", encoding="utf-8") as f:
+            json.dump(instruments, f, indent=2, ensure_ascii=False)
+        print(f"[INFO] 已索引 {len(instruments)} 个仪器驱动")
+    else:
+        print("[WARN] 未找到任何仪器驱动")
+
+    return instruments
+
+
 def extract_class_info(filepath: Path) -> Dict:
     """从 Python 文件中提取类方法。"""
     info = {"methods": {}}
@@ -89,6 +121,103 @@ def extract_class_info(filepath: Path) -> Dict:
         print(f"[WARN] 扫描失败 {filepath}: {e}")
 
     return info
+
+
+def extract_instrument_class(filepath: Path) -> Optional[Dict]:
+    """从仪器驱动文件中提取类信息和构造参数。"""
+    instrument_info = {
+        "file": filepath.name,
+        "classes": {},
+    }
+
+    if not filepath.exists():
+        return None
+
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        # 匹配类定义
+        class_pattern = r"class\s+(\w+)(?:\([^)]*\))?\s*:"
+        for class_match in re.finditer(class_pattern, content):
+            class_name = class_match.group(1)
+            class_info = {"methods": {}, "init_params": []}
+
+            # 提取 __init__ 参数
+            init_pattern = rf"class\s+{class_name}[^:]*:\s*def\s+__init__\s*\(([^)]*)\)"
+            init_match = re.search(init_pattern, content)
+            if init_match:
+                init_args = init_match.group(1)
+                # 解析参数（去除 self）
+                params = [
+                    p.strip()
+                    for p in init_args.split(",")
+                    if p.strip() and p.strip() != "self"
+                ]
+                class_info["init_params"] = params
+
+            # 提取公共方法
+            method_pattern = r'def\s+(\w+)\s*\(([^)]*)\)(?:\s*->\s*[^:]+)?\s*:\s*(?:\s*"""([\s\S]*?)""")?'
+            for method_match in re.finditer(method_pattern, content):
+                method_name, method_args, docstring = method_match.groups()
+                # 只提取不以下划线开头的方法
+                if not method_name.startswith("_") or method_name == "__init__":
+                    class_info["methods"][method_name] = {
+                        "args": method_args,
+                        "docstring": docstring.strip() if docstring else "",
+                    }
+
+            if class_info["methods"] or class_info["init_params"]:
+                instrument_info["classes"][class_name] = class_info
+
+        return instrument_info if instrument_info["classes"] else None
+
+    except Exception as e:
+        print(f"[WARN] 扫描仪器驱动失败 {filepath}: {e}")
+        return None
+
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        # 匹配类定义
+        class_pattern = r"class\s+(\w+)(?:\([^)]*\))?\s*:"
+        for class_match in re.finditer(class_pattern, content):
+            class_name = class_match.group(1)
+            class_info = {"methods": {}, "init_params": []}
+
+            # 提取 __init__ 参数
+            init_pattern = rf"class\s+{class_name}[^:]*:\s*def\s+__init__\s*\(([^)]*)\)"
+            init_match = re.search(init_pattern, content)
+            if init_match:
+                init_args = init_match.group(1)
+                # 解析参数（去除 self）
+                params = [
+                    p.strip()
+                    for p in init_args.split(",")
+                    if p.strip() and p.strip() != "self"
+                ]
+                class_info["init_params"] = params
+
+            # 提取公共方法
+            method_pattern = r'def\s+(\w+)\s*\(([^)]*)\)(?:\s*->\s*[^:]+)?\s*:\s*(?:\s*"""([\s\S]*?)""")?'
+            for method_match in re.finditer(method_pattern, content):
+                method_name, method_args, docstring = method_match.groups()
+                # 只提取不以下划线开头的方法
+                if not method_name.startswith("_") or method_name == "__init__":
+                    class_info["methods"][method_name] = {
+                        "args": method_args,
+                        "docstring": docstring.strip() if docstring else "",
+                    }
+
+            if class_info["methods"] or class_info["init_params"]:
+                instrument_info["classes"][class_name] = class_info
+
+        return instrument_info if instrument_info["classes"] else None
+
+    except Exception as e:
+        print(f"[WARN] 扫描仪器驱动失败 {filepath}: {e}")
+        return None
 
 
 def extract_registers(filepath: Path) -> Dict[str, str]:
@@ -190,16 +319,23 @@ def main():
     # 步骤 1: 扫描库
     library_index = scan_library(str(lib_to_scan), output_dir)
 
+    # 步骤 1.5: 扫描仪器驱动（仅 dry-run 时执行）
+    if args.dry_run:
+        instruments_dir = "ic_psd3/src/lab_instruments/instruments"
+        scan_instruments(instruments_dir, output_dir)
+
     # 步骤 2: 读取规格（由 AGENT 解析）
     with open(spec_path, "r", encoding="utf-8") as f:
         spec_content = f.read()
 
     # 步骤 3: 由 AGENT 生成代码
-    # AGENT 使用 library_index 和 spec_content 直接生成 test_script.py
+    # AGENT 使用 library_index、instruments_index 和 spec_content 直接生成 test_script.py
     script_path = output_dir / "test_script.py"
 
     if args.dry_run:
-        print(f"\n[INFO] 干运行模式 - 库索引已生成: {output_dir}/library_index.json")
+        print(f"\n[INFO] 干运行模式 - 生成的文件:")
+        print(f"  - {output_dir}/library_index.json")
+        print(f"  - {output_dir}/instruments.json (如果存在)")
         print("[INFO] AGENT 现在可以基于索引和规格生成代码")
         sys.exit(0)
 
