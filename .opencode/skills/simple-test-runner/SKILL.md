@@ -349,7 +349,85 @@ prbs_result = usb_obj.check_usb3_prbs_with_break(
 error_count = prbs_result[0]  # 返回值是列表，第一个元素是错误计数
 ```
 
-## QA
+### 11. 导入方法选择 🎯
+
+**问题**: 生成测试脚本时，导入库模块有多种方法。方法选择影响安全性、可维护性和代码简洁度。
+
+**方法对比**:
+
+| 方面 | 函数式（推荐）| 直接式 |
+|-----|-------------|--------|
+| 错误处理 | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ |
+| 复用性 | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ |
+| 代码简洁 | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
+| 添加模块 | 1 行 | 6 行 |
+
+**❌ 不推荐的直接式方法**:
+```python
+usb_spec = importlib.util.spec_from_file_location(
+    "usb_common_class", lib_path / "usb_common_class.py"
+)
+usb_module = importlib.util.module_from_spec(usb_spec)
+usb_spec.loader.exec_module(usb_module)  # 无错误处理，若 spec 为 None 会崩溃
+USBCommonClass = usb_module.USBCommonClass
+
+# 添加新模块需要重复上述代码...
+```
+
+**✓ 推荐的函数式方法（混合最佳实践）**:
+```python
+# Setup path for imports
+script_dir = Path(__file__).parent
+# From: ic_psd3/tests/generated/<test_name>/test_script.py
+# To:   ic_psd_flow/ (root) - 5 层路径
+proj_root = script_dir.parent.parent.parent.parent.parent
+lib_path = proj_root / "ic_psd3" / "library"
+sys.path.insert(0, str(proj_root / "ic_psd3" / "src"))
+
+import importlib.util
+
+def load_library_module(module_name: str):
+    """Load library module with error handling."""
+    spec = importlib.util.spec_from_file_location(
+        module_name, 
+        lib_path / f"{module_name}.py"
+    )
+    if not spec or not spec.loader:
+        raise ImportError(f"Cannot find module: {module_name}")
+    
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+# 直接提取类（简洁且易读）
+usb_module = load_library_module("usb_common_class")
+USBCommonClass = usb_module.USBCommonClass
+
+aves_module = load_library_module("aves_class")
+AVESChipConfig = aves_module.AVESChipConfig
+
+from hw_bridge import DeviceManager
+```
+
+**优点**:
+- ✓ 完整的错误处理（检查 spec 和 loader）
+- ✓ 添加新模块只需 3 行代码
+- ✓ 代码复用性最高
+- ✓ 中间异常明确，易于调试
+
+**使用示例**:
+```python
+# 添加 psd3_common_class - 只需 3 行
+psd3_module = load_library_module("psd3_common_class")
+PSD3CommonClass = psd3_module.PSD3CommonClass
+
+# 然后在脚本中使用
+psd3_obj = PSD3CommonClass()
+psd3_obj.some_method()
+```
+
+## QA（续）
 
 **Q: python run使用什么环境？**
 A: 在当前环境下新建venv，安装requirements.txt后执行
