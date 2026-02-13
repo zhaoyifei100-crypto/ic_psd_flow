@@ -23,17 +23,6 @@ ic_psd3/
 │       ├── aves_converter.py    # AVESClass自动生成器
 │       └── reg_converter.py     # AutoClass→I2C转换器
 │
-├── framework/                   # 测试框架层
-│   ├── core/                    # 核心引擎
-│   │   ├── test_base.py         # [TODO] TestSuite基类
-│   │   ├── test_runner.py       # [TODO] 测试执行器
-│   │   └── test_context.py      # [TODO] 测试上下文管理
-│   ├── reporting/               # 报告生成
-│   │   ├── report_gen.py        # [TODO] 报告生成器
-│   │   └── html_reporter.py     # [TODO] HTML报告
-│   └── utils/                   # 工具函数
-│       └── data_logger.py       # [TODO] 数据记录器
-│
 ├── import      #PSD2 import files
 │    ├── GSU1K1_NTO.xml      # chip xml file
     ├── gsu1001_2025_nto_scripts.txt        #AVES scripts write only
@@ -48,28 +37,7 @@ ic_psd3/
 
 │
 └── tests/                       # 测试用例层
-    ├── specs/                   # 测试规格目录
-    │   ├── phy/         # [TODO] 可靠性测试规格
-    │   │   ├── usb3_prbs.md
-    │   │   ├── ...
-    │   └── reliability/          # [TODO] 可靠测试规格
-    │   └── functional/          # [TODO] 功能测试规格
-    │
-    ├── generated/               # [TODO] 生成的测试代码
-    │   └── phy/
-    │       └── usb3_prbs/
-    │           ├── custom_htb_test.py      #AGI输出给用户修改
-    │           └── final_htb_test.py       #AGI自己整合成最终版本
-    │
-    └── results/                 # [TODO] 测试结果（闭环）
-        └── phy/
-            └── usb3_prbs/
-                ├── 2024-01-15_001/
-                │   ├── config.json
-                │   ├── data.json
-                │   ├── report.html
-                │   └── aves_log.txt
-                └── summary.csv
+
 ```
 
 ---
