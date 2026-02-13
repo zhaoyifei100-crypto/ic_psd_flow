@@ -1,5 +1,10 @@
 # USB3 PRBS Test Spec
 
+
+## DUT
+GSU1K1 (i2c_port: 0, chip_addr: 0x58, type: ftdi)
+
+
 ## Test Purpose
 USB3.0 5Gbps PRBS7 loopback test on single board
 
