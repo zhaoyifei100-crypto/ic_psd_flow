@@ -1,3 +1,13 @@
+---
+name: simple-test-runner
+description: 芯片PSD3测试执行器，由Agent主导PSD3测试的执行，提供库函数索引
+license: MIT
+compatibility: opencode
+metadata:
+  author: yfzhao
+  version: 1.0.0
+---
+
 # Simple Test Runner Skill
 
 ## 描述
