@@ -123,7 +123,7 @@ class AVESGenerator:
         )
 
         lines = [
-            "from library.auto_class import AutoClass",
+            "from .auto_class import AutoClass",
             "",
             "# AVES 脚本生成模板",
             "# 请在函数内使用 AutoClass.<PAGE>.<REG>.w(val) 编写逻辑",
@@ -173,53 +173,33 @@ class AVESGenerator:
         touched_addrs = set()  # 记录哪些地址被用户显式修改过
 
         for stmt in func_node.body:
-            # 寻找 AutoClass.PAGE.REG.w(val)
-            # AST structure: Call(func=Attribute(value=Attribute(value=Attribute(value=Name(id='AutoClass')...), attr='REG'), attr='w'), args=[Constant(value=val)])
-            if isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Call):
-                call = stmt.value
-                if isinstance(call.func, ast.Attribute) and call.func.attr == "w":
-                    # 它是 .w() 调用
-                    reg_node = call.func.value
-                    if isinstance(reg_node, ast.Attribute):
-                        reg_caption = reg_node.attr
-                        page_node = reg_node.value
-                        if (
-                            isinstance(page_node, ast.Attribute)
-                            and isinstance(page_node.value, ast.Name)
-                            and page_node.value.id == "AutoClass"
-                        ):
-                            if_name = page_node.attr
+            # 寻找 AutoClass.PAGE.REG.w(val) 或 AutoClass.PAGE.SUB.REG.w(val)
+            # 递归遍历 AST 查找所有的 Call 节点
+            writes = self._find_reg_writes(stmt)
 
-                            # 获取参数值
-                            if len(call.args) == 1:
-                                arg = call.args[0]
-                                if isinstance(arg, ast.Constant):
-                                    val = arg.value
-                                elif isinstance(arg, ast.Num):  # 兼容旧版本 Python
-                                    val = arg.n
-                                else:
-                                    continue  # 忽略动态计算
+            for if_name, reg_caption, val in writes:
+                # 应用写入
+                if (if_name, reg_caption) in self.reg_map:
+                    field = self.reg_map[(if_name, reg_caption)]
+                    for addr, mask in field["masks"].items():
+                        shift = field["shifts"].get(addr, 0)
 
-                                # 应用写入
-                                if (if_name, reg_caption) in self.reg_map:
-                                    field = self.reg_map[(if_name, reg_caption)]
-                                    for addr, mask in field["masks"].items():
-                                        shift = field["shifts"].get(addr, 0)
+                        if (if_name, addr) not in local_bytes:
+                            local_bytes[(if_name, addr)] = 0
 
-                                        if (if_name, addr) not in local_bytes:
-                                            local_bytes[(if_name, addr)] = 0
+                        # 计算要写入该字节的值
+                        # mask 表示该字段在字节中的位位置 (如 0x80 表示 bit 7)
+                        # 需要将 value 左移到 mask 的最低有效位位置
+                        mask_lsb_pos = (
+                            mask & -mask
+                        ).bit_length() - 1  # 找到 mask 的最低有效位位置
+                        bits_to_write = (val << mask_lsb_pos) & mask
 
-                                        # 计算要写入该字节的值
-                                        if shift < 0:
-                                            bits_to_write = (val >> (-shift)) & mask
-                                        else:
-                                            bits_to_write = (val << shift) & mask
-
-                                        # 更新字节值：清除旧位，设置新位
-                                        local_bytes[(if_name, addr)] = (
-                                            local_bytes[(if_name, addr)] & ~mask
-                                        ) | bits_to_write
-                                        touched_addrs.add((if_name, addr))
+                        # 更新字节值：清除旧位，设置新位
+                        local_bytes[(if_name, addr)] = (
+                            local_bytes[(if_name, addr)] & ~mask
+                        ) | bits_to_write
+                        touched_addrs.add((if_name, addr))
 
         # 生成 AVES 文本
         lines = [f":{func_index} {func_name}:"]
@@ -242,6 +222,61 @@ class AVESGenerator:
 
         lines.append("End")
         return "\n".join(lines)
+
+    def _find_reg_writes(self, node: ast.AST) -> List[Tuple[str, str, int]]:
+        """递归查找所有的寄存器写入操作
+
+        返回: List of (interface_name, register_caption, value)
+        """
+        results = []
+
+        # 检查当前节点是否是 Call 节点
+        if isinstance(node, ast.Call):
+            # 检查是否是 .w() 调用
+            if isinstance(node.func, ast.Attribute) and node.func.attr == "w":
+                # 解析调用链: AutoClass.XXX.YYY.w(val)
+                call_chain = self._parse_call_chain(node.func.value)
+
+                if call_chain and call_chain[0] == "AutoClass" and len(call_chain) >= 3:
+                    # call_chain = ['AutoClass', 'Interface', 'Reg'] 或 ['AutoClass', 'Interface', 'Sub', 'Reg']
+                    if_name = call_chain[1]
+                    reg_caption = call_chain[-1]  # 最后一个元素是寄存器名
+
+                    # 获取参数值
+                    if len(node.args) == 1:
+                        arg = node.args[0]
+                        if isinstance(arg, ast.Constant):
+                            val = arg.value
+                        elif isinstance(arg, ast.Num):  # 兼容旧版本 Python
+                            val = arg.n
+                        else:
+                            val = None  # 忽略动态计算
+
+                        if val is not None:
+                            results.append((if_name, reg_caption, val))
+
+        # 递归遍历子节点
+        for child in ast.iter_child_nodes(node):
+            results.extend(self._find_reg_writes(child))
+
+        return results
+
+    def _parse_call_chain(self, node: ast.AST) -> List[str]:
+        """解析属性调用链，如 AutoClass.Misc_Inst.i2c_rst.w
+
+        返回: ['AutoClass', 'Misc_Inst', 'i2c_rst']
+        """
+        chain = []
+        current = node
+
+        while isinstance(current, ast.Attribute):
+            chain.insert(0, current.attr)
+            current = current.value
+
+        if isinstance(current, ast.Name):
+            chain.insert(0, current.id)
+
+        return chain
 
 
 if __name__ == "__main__":

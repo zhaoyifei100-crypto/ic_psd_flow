@@ -25,14 +25,6 @@ metadata:
 ### 步骤 1：准备输入
 用户需要提供一个包含函数名和描述的 Markdown 文件。
 例如 `func_define.md`:
-
-```markdown
-# ChipInit
-初始化基础时钟。
-
-# AudioCfg
-配置音频格式为 I2S。
-```
 Agent 读到这个文件之后进行解析，提取函数定义并生成 Python 模板
 
 ### 步骤 2：生成 Python 模板
@@ -45,7 +37,22 @@ python3 ic_psd2/src/aves_generator.py \
 ```
 Agent 不要尝试去psd3.import文件夹读取里面的旧文件
 
-### 步骤 3：用户编写逻辑
+### 步骤 3：准备 IDE 补全库（本地）
+在用户开始编写逻辑前，Agent 必须在 `ic_psd2/output` 构建临时 `auto_class.py`，以便 IDE 提供准确的自动补全，且**不影响** `ic_psd3/library` 的状态。
+Agent 调用 `ic_psd2/src/generate_local_autoclass.py`：
+```bash
+python3 ic_psd2/src/generate_local_autoclass.py <PATH_TO_YOUR_CHIP_XML> ic_psd2/output/auto_class.py
+```
+完成后检查 `ic_psd2/output/auto_class.py` 是否存在。用户在编写逻辑时，IDE 会识别同目录下的库。
+
+Agnet 如果要给出推荐的寄存器：
+  **只能**使用脚本在`*.json/*.XML/*.xlsx`里搜索
+  **禁止**直接读取所有`*.json/*.XML/*.xlsx`的内容，会造成用户token消耗量过大
+
+Agent 告知用户："本地补全库已准备就绪，请在 IDE 中打开 `aves_template.py` 并利用 AutoClass 补全功能编写代码。完成后请告诉我。"
+
+### 步骤 4：用户编写逻辑
+
 用户在 IDE 中打开 `aves_template.py`，使用 `AutoClass` 编写逻辑：
 ```python
 def AudioCfg():
@@ -54,7 +61,7 @@ def AudioCfg():
     AutoClass.AG.i2c_audio_width.w(0x18)
 ```
 
-### 步骤 4：构建 AVES 脚本
+### 步骤 5：构建 AVES 脚本
 Agent 解析 Python 代码并输出结果：
 ```bash
 python3 ic_psd2/src/aves_generator.py \
@@ -70,8 +77,10 @@ python3 ic_psd2/src/aves_generator.py \
 1. **询问 MD 路径**：
    "请提供包含函数定义的 Markdown 文件路径（例如 `ic_psd2/output/func.md`）"
 
-2. **生成并展示模板**：
-   生成模板后，告知用户："模板已生成到 `ic_psd2/output/aves_template.py`。请在 IDE 中打开并利用 AutoClass 补全功能填写代码。完成后请告诉我。"
+2. **生成模板并准备本地库**：
+   生成模板后，主动执行或询问用户执行 `unified_generator` 的 XML 路径，并确保输出到 `ic_psd2/output/auto_class.py`。
+   告知用户："模板已生成到 `ic_psd2/output/aves_template.py`，且本地 IDE 补全库已在 `ic_psd2/output` 准备就绪（不影响 psd3 库）。请在 IDE 中打开并利用 AutoClass 补全功能填写代码。完成后请告诉我。"
+
 
 3. **构建脚本**：
    接收到用户确认后，执行构建并展示生成的 AVES 内容（前几行或全量）。
