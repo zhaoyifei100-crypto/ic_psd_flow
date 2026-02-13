@@ -27,7 +27,7 @@ ic_psd3/library/GSU1K1_NTO_scripts.c
 ic_psd3/library/GSU1K1_NTO_scripts.h
 
 #testfile
-ic_psd3/tests/specs/phy/*
-ic_psd3/tests/generated/phy/*
-ic_psd3/tests/results/phy/*
-!ic_psd3/tests/specs/phy/usb3_prbs.md
+ic_psd3/tests/specs/*
+ic_psd3/tests/generated/*
+ic_psd3/tests/results/*
+!ic_psd3/tests/specs/usb3_prbs.md

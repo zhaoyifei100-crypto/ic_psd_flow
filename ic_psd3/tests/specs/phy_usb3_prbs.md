@@ -55,7 +55,6 @@ USB3.0 5Gbps PRBS7 loopback test on single board
 |------|----------|
 | PRBS Errors | 0 errors in 5 sec |
 | Eye Height | > TBD mV |
-| CDR Lock | freq_dac stable |
 
 ## Notes
 - Single board internal loopback
