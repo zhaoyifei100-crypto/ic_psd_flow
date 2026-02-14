@@ -1,21 +1,20 @@
 # PHY USB3 PRBS Test Spec
-
+yfzhao 20260214
 
 ## DUT
 GSU1K1 (i2c_port: 0, chip_addr: 0x58, type: ftdi)
 
-
 ## Test Purpose
-USB3.0 5Gbps PRBS7 loopback test on single board
+USB3.0 5Gbps PRBS loopback test on single board
 
 ## Port Config
 | Signal | Port | I2C Page |
 |--------|------|----------|
-| TX | USB3 Upstream | PipeUp (0x31) |
-| RX | USB3 Upstream | CdrUp (0x10) |
+| TX | USB3 Upstream | PipeUp CdrUp |
+| RX | USB3 Upstream | PipeDp1 CdrDp1 |
 
 ## Test Parameters
-- Pattern: PRBS7 (Mode 2)
+- Pattern: PRBS15
 - SSC: Disabled
 - Check duration: 5 sec
 - Eye samples: 10
@@ -26,13 +25,15 @@ USB3.0 5Gbps PRBS7 loopback test on single board
 1. Chip Init
    - Reset all
    - Power up
+   - Hub reset remove
    - PLL init (no SSC)
    - USB PHY init
-   - Hub reset remove
+
 
 2. PRBS Setup
-   - PIPE PRBS mode enable
-   - Set PRBS7 pattern
+   - :03-01 PIPE-up Tx/Rx PRBS:
+   - :03-02 PIPE-dp1 Tx/Rx PRBS:
+   - Set PRBS mode, set to PRBS15
    - TX serializer reset
 
 3. CDR Config
