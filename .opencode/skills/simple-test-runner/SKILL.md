@@ -193,10 +193,11 @@ from hw_bridge import DeviceManager
 **重要说明**：
 - 无需修改 `sys.path`，当前目录已自动在 path 中
 - `library/` 是 dry-run 阶段复制的本地快照，确保环境隔离
-- `hw_bridge` 通过 `pip install -e ic_psd3/src/hw_bridge` 安装到 venv
+- `hw_bridge` 分两种情况，Linux下通过 `pip install -e ic_psd3/src/hw_bridge` 安装到 venv
+                        Windows下检查pip里有没有hw_bridge，如没有**提示**用户手动用pip安装hw_bridge
 
 ## 注意事项
-- 在当前环境下新建venv，安装requirements.txt后执行，特别注意要安装ic_psd3/src/hw_bridge
+- **检查**python环境是否正确，是否已经安装`hw_bridge`
 - library_index.json 位于每个测试的输出目录中
 - 扫描**本地**library[usb_common_class.py, psd3_common_class.py, aves_class.py, reg_define.py]
 - 代码生成完全由 AGENT 完成，本 Skill 只负责执行
