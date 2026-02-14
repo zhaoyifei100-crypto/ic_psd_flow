@@ -48,7 +48,7 @@ USB3.0 5Gbps PRBS loopback test on single board
 
 5. Measurements
    - Eye height (10 samples avg)
-   - CDR phase/freq DAC (1000 samples)
+   - CDR TODO
 ```
 
 ## Pass Criteria
