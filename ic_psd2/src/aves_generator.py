@@ -25,9 +25,9 @@ class AVESGenerator:
         with open(md_path, "r", encoding="utf-8") as f:
             content = f.read()
 
-        # 提取 Header (支持 # 或 func 关键词)
+        # 提取 Header (支持单个 # 或 func 关键词，忽略 ## 作为注释)
         functions = re.findall(
-            r"^(?:#|func)\s*(.+?)\n(.*?)(?=\n(?:#|func)|\Z)",
+            r"^(?:#(?!#)\s*|func\s+)(.+?)\n(.*?)(?=\n(?:#(?!#)|func)\s|\Z)",
             content,
             re.MULTILINE | re.DOTALL | re.IGNORECASE,
         )
