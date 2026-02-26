@@ -334,7 +334,7 @@ class MockExecutor:
 
         # 为每个函数生成独立的 AVES 块
         lines = []
-        func_index = func_index_start
+        sub_index = 1
 
         for func_name in functions:
             # 清空写入记录
@@ -372,7 +372,7 @@ class MockExecutor:
             autoclass_calls = self._extract_autoclass_calls(script_content, func_name)
 
             if write_log:
-                lines.append(f":01-{func_index:02d} {func_name}:")
+                lines.append(f":{func_index_start:02d}-{sub_index:02d} {func_name}:")
 
                 # 添加 AutoClass 调用作为注释
                 if autoclass_calls:
@@ -386,7 +386,7 @@ class MockExecutor:
                     lines.append(f"B0 {addr:04X} {value:02X};")
                 lines.append("End")
                 lines.append("")  # 空行分隔
-                func_index += 1
+                sub_index += 1
 
         # 写入文件
         with open(output_path, "w", encoding="utf-8") as f:
