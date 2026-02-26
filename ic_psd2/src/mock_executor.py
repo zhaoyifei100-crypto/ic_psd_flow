@@ -210,7 +210,7 @@ class MockExecutor:
         # 注意：write_log 已经按执行顺序记录了所有操作
 
         # 按顺序输出所有写入
-        lines.append(f":{func_index:02d}-01 auto_generated:")
+        lines.append(f":01-{func_index:02d} auto_generated:")
 
         for addr1, addr2, value in write_log:
             addr = (addr1 << 8) | addr2
