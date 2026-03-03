@@ -93,24 +93,7 @@ class USBCommonClass:
         self.device.write_bits(utmi_addr, 0x30, 3, 1, 1)  # prbs_check_clear=1
         self.device.write_bits(utmi_addr, 0x30, 3, 1, 0)  # prbs_check_clear=0
 
-    # =========================================================================
-    # USB3.0 Initialization Functions
-    # =========================================================================
 
-    def init_usb3_prbs(
-        self, pipe_addr: int, cdr_addr: int, ssc_en: bool = False
-    ) -> None:
-        """
-        Initialize USB3.0 PRBS mode.
-
-        Args:
-            pipe_addr: PIPE register page address
-            cdr_addr: CDR register page address
-            ssc_en: Enable SSC (Spread Spectrum Clocking)
-        """
-        # Enable PRBS generator and checker
-        self.device.write_bits(pipe_addr, 0x63, 4, 1, 1)  # prbs_gen_en=1
-        self.device.write_bits(pipe_addr, 0x64, 7, 1, 1)  # prbs_compare_en=1
 
     # =========================================================================
     # USB2.0 Configuration Functions
@@ -606,7 +589,12 @@ class USBCommonClass:
 
         Args:
             pipe_addr_list: List of PIPE register page addresses
-            prbs_mode: PRBS mode (0-7)
+            prbs_mode: 
+                PRBS mode 0, PRBS7
+                PRBS mode 1, PRBS10
+                PRBS mode 2, PRBS15
+                PRBS mode 3, PRBS23
+                PRBS mode 4, PRBS31
         """
         for pipe_addr in pipe_addr_list:
             self.device.write_bits(pipe_addr, 0x63, 1, 3, prbs_mode)

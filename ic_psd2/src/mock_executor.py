@@ -181,7 +181,7 @@ class MockExecutor:
         return self.driver.get_write_log()
 
     def generate_aves(
-        self, script_path: str, output_path: str, func_index_start: int = 16
+        self, script_path: str, output_path: str, func_index_start: int = 1
     ):
         """
         生成 AVES 脚本
@@ -189,7 +189,7 @@ class MockExecutor:
         Args:
             script_path: 用户 Python 脚本路径
             output_path: AVES 输出路径
-            func_index_start: 起始函数索引（默认 16）
+            func_index_start: 起始函数索引（默认 1，对应 01-01）
         """
         # 执行脚本获取写入记录
         write_log = self.execute_script(script_path)
@@ -210,7 +210,7 @@ class MockExecutor:
         # 注意：write_log 已经按执行顺序记录了所有操作
 
         # 按顺序输出所有写入
-        lines.append(f":{func_index:02d}-01 auto_generated:")
+        lines.append(f":01-{func_index:02d} auto_generated:")
 
         for addr1, addr2, value in write_log:
             addr = (addr1 << 8) | addr2
@@ -300,7 +300,7 @@ class MockExecutor:
         return autoclass_calls
 
     def generate_aves_per_function(
-        self, script_path: str, output_path: str, func_index_start: int = 16
+        self, script_path: str, output_path: str, func_index_start: int = 1
     ):
         """
         按函数生成 AVES 脚本（支持多个独立函数）
@@ -312,7 +312,7 @@ class MockExecutor:
         Args:
             script_path: 用户 Python 脚本路径
             output_path: AVES 输出路径
-            func_index_start: 起始函数索引（默认 16）
+            func_index_start: 起始函数索引（默认 1，对应 01-01）
         """
         import ast
 
@@ -334,7 +334,7 @@ class MockExecutor:
 
         # 为每个函数生成独立的 AVES 块
         lines = []
-        func_index = func_index_start
+        sub_index = 1
 
         for func_name in functions:
             # 清空写入记录
@@ -372,7 +372,7 @@ class MockExecutor:
             autoclass_calls = self._extract_autoclass_calls(script_content, func_name)
 
             if write_log:
-                lines.append(f":{func_index:02d}-01 {func_name}:")
+                lines.append(f":{func_index_start:02d}-{sub_index:02d} {func_name}:")
 
                 # 添加 AutoClass 调用作为注释
                 if autoclass_calls:
@@ -386,7 +386,7 @@ class MockExecutor:
                     lines.append(f"B0 {addr:04X} {value:02X};")
                 lines.append("End")
                 lines.append("")  # 空行分隔
-                func_index += 1
+                sub_index += 1
 
         # 写入文件
         with open(output_path, "w", encoding="utf-8") as f:
@@ -423,8 +423,8 @@ def main():
     parser.add_argument(
         "--index",
         type=int,
-        default=16,
-        help="Starting function index (default: 16)",
+        default=1,
+        help="Starting function index (default: 1, generates 01-01, 01-02, ...)",
     )
 
     args = parser.parse_args()
