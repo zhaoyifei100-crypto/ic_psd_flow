@@ -49,11 +49,13 @@ Shows: Service health, available models, key count, team count
 
 ### 2. Key Management
 
+**注意：** 使用 `--budget` 创建 key 时，会自动设置 `budget_duration` 为 `1month`（每月重置预算）。
+
 ```bash
 # List keys
 python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py key list
 
-# Generate key
+# Generate key (budget_duration 自动设置为 1month)
 python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py key generate \
   --alias "员工A" --budget 20
 
@@ -94,11 +96,13 @@ python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py key regenerate 
 
 ### 3. User Management
 
+**注意：** 使用 `--budget` 创建 user 时，会自动设置 `budget_duration` 为 `1month`（每月重置预算）。
+
 ```bash
 # List users
 python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py user list
 
-# Create user
+# Create user (budget_duration 自动设置为 1month)
 python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py user new \
   --username "员工" --budget 20 --email "user@example.com"
 
@@ -119,11 +123,13 @@ python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py user delete \
 
 ### 4. Team Management
 
+**注意：** 使用 `--budget` 创建 team 时，会自动设置 `budget_duration` 为 `1month`（每月重置预算）。
+
 ```bash
 # List teams
 python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py team list
 
-# Create team
+# Create team (budget_duration 自动设置为 1month)
 python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py team new \
   --name "研发组" --budget 100
 
@@ -280,15 +286,52 @@ export GSAI_API_KEY=your-api-key
 
 ---
 
-### 8. Service Control
+### 8. Budget Management
+
+**注意：** 设置预算时默认使用 `budget_duration: 1month`（每月重置预算）。
 
 ```bash
-# Restart LiteLLM
+# Set key budget (自动设置 budget_duration 为 1month)
+python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py budget key sk-xxx 50
+
+# Remove key budget
+python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py budget key sk-xxx --unset
+
+# Set user budget (自动设置 budget_duration 为 1month)
+python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py budget user user-xxx 100
+
+# Remove user budget
+python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py budget user user-xxx --unset
+
+# Set team budget (自动设置 budget_duration 为 1month)
+python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py budget team team-xxx 500
+
+# Remove team budget
+python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py budget team team-xxx --unset
+```
+
+---
+
+### 9. Service Control
+
+```bash
+# Restart LiteLLM service (docker-compose)
 python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py restart
 
-# View logs
+# View LiteLLM logs
 python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py logs --lines 100
+
+# View system load (using Atop)
+python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py load
+
+# View system load (raw Atop output)
+python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py load --raw
 ```
+
+**说明：**
+- `restart` 使用 `docker-compose restart litellm` 重启服务
+- `logs` 查看 LiteLLM 容器日志
+- `load` 使用 VPS 上已安装的 **Atop** 高级性能监控工具显示系统负载
 
 ---
 
@@ -323,6 +366,9 @@ python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py logs --lines 10
 | Team Info | `/team/info` | GET |
 | Team Member Add | `/team/member_add` | POST |
 | Team Member Delete | `/team/member_delete` | POST |
+| Key Budget Update | `/key/update` | POST |
+| User Budget Update | `/user/update` | POST |
+| Team Budget Update | `/team/update` | POST |
 | Health | `/health` | GET |
 | Restart | `/admin/reload` | POST |
 
@@ -342,91 +388,13 @@ The skill uses environment variables for configuration:
 
 ---
 
-## TODO: Future Enhancements
 
-### 4. Budget Management [TODO]
-
-```bash
-# Set key budget
-python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py budget key <key> [amount]
-
-# Set user budget
-python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py budget user <user> [amount]
-
-# Set team budget
-python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py budget team <team> [amount]
-
-# Generate spend report
-python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py budget report
-
-# Set budget alert threshold
-python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py budget alert --threshold 80%
-```
-
-**Planned Features:**
-- Independent budget management commands
-- Spend tracking and reporting
-- Alert threshold configuration
-
----
-
-### 5. Usage Monitoring & Reports [TODO]
-
-```bash
-# Generate usage report
-python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py report daily|weekly|monthly
-
-# Export report
-python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py report export <format>
-
-# Top models by usage
-python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py report top-models
-
-# Top users by usage
-python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py report top-users
-```
-
-**Planned Features:**
-- Time-based usage reports
-- Export formats (CSV, JSON)
-- Usage analytics and rankings
-
----
-
-### 6. Configuration Management [TODO]
-
-```bash
-# List available models
-python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py config list-models
-
-# Export full configuration
-python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py config export
-
-# Import configuration from backup
-python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py config import <file>
-```
-
-**Planned Features:**
-- Model discovery and listing
-- Full configuration backup/restore
-- Multi-format config support
-
----
 
 ### 7. System Operations [TODO]
 
 ```bash
-# Backup configuration
-python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py backup
-
-# Restore configuration
-python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py restore <backup-file>
-```
-
-**Planned Features:**
-- Automated backups
-- Point-in-time recovery
-- Configuration versioning
+# system load
+现在VPS上有load工具，可以去VPS上看看
 
 ---
 

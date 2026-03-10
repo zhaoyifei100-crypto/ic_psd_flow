@@ -231,8 +231,9 @@ def cmd_key_generate(args):
         "max_budget": args.budget,
     }
 
-    if args.duration:
-        data["duration"] = args.duration
+    # Default budget duration is 1month if budget is set
+    if args.budget is not None and args.budget > 0:
+        data["budget_duration"] = args.duration if args.duration else "1month"
 
     if args.models:
         data["models"] = [m.strip() for m in args.models.split(",")]
@@ -254,7 +255,9 @@ def cmd_key_generate(args):
         print_status(True, f"API Key created!")
         print(f"  Alias: {args.alias}")
         print(f"  Key: {new_key}")
-        print(f"  Budget: ${args.budget}/month")
+        if args.budget is not None and args.budget > 0:
+            print(f"  Budget: ${args.budget}")
+            print(f"  Duration: 1month")
         print(f"  Models: {args.models or 'All'}")
 
         if args.save:
@@ -331,11 +334,14 @@ def cmd_key_info(args):
         print_status(False, f"Key not found: {key}")
         return
 
+    budget_val = info.get("max_budget")
+    budget_str = f"${budget_val:.2f}" if budget_val is not None else "Unlimited"
+
     print(f"\n{BLUE}Key Info:{RESET}")
     print(f"  Alias: {info.get('key_alias') or info.get('key_name') or 'N/A'}")
     print(f"  Key: {actual_key[:20]}...")
     print(f"  Spend: ${info.get('spend', 0):.2f}")
-    print(f"  Budget: ${info.get('max_budget', 0):.2f}")
+    print(f"  Budget: {budget_str}")
     print(f"  Budget Reset: {info.get('budget_reset_at') or 'N/A'}")
     print(f"  Expires: {info.get('expires') or 'Never'}")
     print(f"  Created: {info.get('created_at')}")
@@ -343,12 +349,15 @@ def cmd_key_info(args):
     print(f"  Models: {', '.join(info.get('models', [])) or 'All'}")
 
     spend = info.get("spend", 0)
-    budget = info.get("max_budget", 1)
-    percent = spend / budget * 100 if budget > 0 else 0
+    budget = info.get("max_budget")
 
-    print(f"\n  Usage: {percent:.1f}%")
-    if percent > 80:
-        print_status(False, "  ⚠️ Budget warning!")
+    if budget is not None and budget > 0:
+        percent = spend / budget * 100
+        print(f"\n  Usage: {percent:.1f}%")
+        if percent > 80:
+            print_status(False, "  ⚠️ Budget warning!")
+    else:
+        print(f"\n  Usage: Unlimited (no budget)")
 
 
 def cmd_key_regenerate(args):
@@ -534,6 +543,7 @@ def cmd_user_new(args):
 
     if args.budget:
         data["max_budget"] = args.budget
+        data["budget_duration"] = "1month"
 
     result = api_call("POST", "/user/new", data)
 
@@ -541,6 +551,9 @@ def cmd_user_new(args):
         print_status(True, f"User created!")
         print(f"  Alias: {args.username}")
         print(f"  User ID: {result.get('user_id')}")
+        if args.budget:
+            print(f"  Budget: ${args.budget}")
+            print(f"  Duration: 1month")
     else:
         print_status(False, f"Failed: {result}")
 
@@ -674,6 +687,7 @@ def cmd_team_new(args):
 
     if args.budget:
         data["team_max_budget"] = args.budget
+        data["budget_duration"] = "1month"
 
     result = api_call("POST", "/team/new", data)
 
@@ -681,6 +695,9 @@ def cmd_team_new(args):
         print_status(True, f"Team created!")
         print(f"  Name: {args.name}")
         print(f"  Team ID: {result.get('team_id')}")
+        if args.budget:
+            print(f"  Budget: ${args.budget}")
+            print(f"  Duration: 1month")
     else:
         print_status(False, f"Failed: {result}")
 
@@ -916,6 +933,141 @@ def cmd_logs(args):
         print_status(False, f"Failed: {e}")
 
 
+def cmd_load(args):
+    """Show system load using Atop."""
+    try:
+        if args.raw:
+            # Show raw Atop output (memory and process snapshot)
+            output = ssh_exec("atop -m 1 1 2>&1 | head -60")
+            print(output)
+        else:
+            # Show formatted summary
+            print(f"\n{BLUE}{'=' * 60}{RESET}")
+            print(f"{BLUE}System Load Summary{RESET}")
+            print(f"{BLUE}{'=' * 60}{RESET}\n")
+
+            # Get current system stats
+            output = ssh_exec("uptime && free -h && df -h / 2>&1")
+            print(output)
+
+            print(f"\n{YELLOW}Tip: Use 'load --raw' for detailed Atop output{RESET}")
+            print(
+                f"{YELLOW}Note: Atop is running on this VPS for continuous monitoring{RESET}\n"
+            )
+    except Exception as e:
+        print_status(False, f"Failed to get load info: {e}")
+
+
+# ==================== Budget Management ====================
+
+
+def cmd_budget_key(args):
+    """Set or unset key budget."""
+    key_input = args.key
+    amount = args.amount
+    unset = args.unset
+
+    # Find key
+    actual_key, key_info = _find_key_by_input(key_input)
+
+    if not actual_key:
+        print_status(False, f"Key not found: {key_input}")
+        return
+
+    if unset:
+        # Unset budget (set to None/null)
+        data = {"key": actual_key, "max_budget": None}
+        result = api_call("POST", "/key/update", data)
+
+        if "error" not in str(result).lower():
+            print_status(True, f"Budget removed for key: {actual_key[:12]}...")
+        else:
+            print_status(False, f"Failed to remove budget: {result}")
+    else:
+        # Set budget
+        if amount is None:
+            print_status(False, "Budget amount required (or use --unset)")
+            return
+
+        data = {"key": actual_key, "max_budget": amount, "budget_duration": "1month"}
+        result = api_call("POST", "/key/update", data)
+
+        if "error" not in str(result).lower():
+            print_status(True, f"Budget set for key: {actual_key[:12]}...")
+            print(f"  Budget: ${amount}")
+            print(f"  Duration: 1month")
+        else:
+            print_status(False, f"Failed to set budget: {result}")
+
+
+def cmd_budget_user(args):
+    """Set or unset user budget."""
+    user_id = args.user_id
+    amount = args.amount
+    unset = args.unset
+
+    if unset:
+        # Unset budget
+        data = {"user_id": user_id, "max_budget": None}
+        result = api_call("POST", "/user/update", data)
+
+        if "error" not in str(result).lower():
+            print_status(True, f"Budget removed for user: {user_id}")
+        else:
+            print_status(False, f"Failed to remove budget: {result}")
+    else:
+        # Set budget
+        if amount is None:
+            print_status(False, "Budget amount required (or use --unset)")
+            return
+
+        data = {"user_id": user_id, "max_budget": amount, "budget_duration": "1month"}
+        result = api_call("POST", "/user/update", data)
+
+        if "error" not in str(result).lower():
+            print_status(True, f"Budget set for user: {user_id}")
+            print(f"  Budget: ${amount}")
+            print(f"  Duration: 1month")
+        else:
+            print_status(False, f"Failed to set budget: {result}")
+
+
+def cmd_budget_team(args):
+    """Set or unset team budget."""
+    team_id = args.team_id
+    amount = args.amount
+    unset = args.unset
+
+    if unset:
+        # Unset budget
+        data = {"team_id": team_id, "team_max_budget": None}
+        result = api_call("POST", "/team/update", data)
+
+        if "error" not in str(result).lower():
+            print_status(True, f"Budget removed for team: {team_id}")
+        else:
+            print_status(False, f"Failed to remove budget: {result}")
+    else:
+        # Set budget
+        if amount is None:
+            print_status(False, "Budget amount required (or use --unset)")
+            return
+
+        data = {
+            "team_id": team_id,
+            "team_max_budget": amount,
+            "budget_duration": "1month",
+        }
+        result = api_call("POST", "/team/update", data)
+
+        if "error" not in str(result).lower():
+            print_status(True, f"Budget set for team: {team_id}")
+            print(f"  Budget: ${amount}")
+            print(f"  Duration: 1month")
+        else:
+            print_status(False, f"Failed to set budget: {result}")
+
+
 # ==================== Main ====================
 
 
@@ -962,9 +1114,19 @@ Examples:
   # Config
   %(prog)s config openai --output ~/.openai.json
 
+  # Budget management
+  %(prog)s budget key sk-xxx 50
+  %(prog)s budget key sk-xxx --unset
+  %(prog)s budget user user-xxx 100
+  %(prog)s budget user user-xxx --unset
+  %(prog)s budget team team-xxx 500
+  %(prog)s budget team team-xxx --unset
+
   # Service
   %(prog)s restart
   %(prog)s logs --lines 100
+  %(prog)s load
+  %(prog)s load --raw
         """,
     )
 
@@ -1096,6 +1258,32 @@ Examples:
     logs_parser = subparsers.add_parser("logs", help="Get logs")
     logs_parser.add_argument("--lines", type=int, default=50, help="Lines")
 
+    # Load
+    load_parser = subparsers.add_parser("load", help="Show system load")
+    load_parser.add_argument("--raw", action="store_true", help="Show raw Atop output")
+
+    # Budget
+    budget_parser = subparsers.add_parser("budget", help="Budget management")
+    budget_sub = budget_parser.add_subparsers(dest="budget_command")
+
+    # Budget key
+    budget_key = budget_sub.add_parser("key", help="Set/unset key budget")
+    budget_key.add_argument("key", help="Key or alias")
+    budget_key.add_argument("amount", type=float, nargs="?", help="Budget amount")
+    budget_key.add_argument("--unset", action="store_true", help="Remove budget limit")
+
+    # Budget user
+    budget_user = budget_sub.add_parser("user", help="Set/unset user budget")
+    budget_user.add_argument("user_id", help="User ID")
+    budget_user.add_argument("amount", type=float, nargs="?", help="Budget amount")
+    budget_user.add_argument("--unset", action="store_true", help="Remove budget limit")
+
+    # Budget team
+    budget_team = budget_sub.add_parser("team", help="Set/unset team budget")
+    budget_team.add_argument("team_id", help="Team ID")
+    budget_team.add_argument("amount", type=float, nargs="?", help="Budget amount")
+    budget_team.add_argument("--unset", action="store_true", help="Remove budget limit")
+
     args = parser.parse_args()
 
     if not args.command:
@@ -1160,6 +1348,15 @@ Examples:
             cmd_restart()
         elif args.command == "logs":
             cmd_logs(args)
+        elif args.command == "load":
+            cmd_load(args)
+        elif args.command == "budget":
+            if args.budget_command == "key":
+                cmd_budget_key(args)
+            elif args.budget_command == "user":
+                cmd_budget_user(args)
+            elif args.budget_command == "team":
+                cmd_budget_team(args)
     except Exception as e:
         print_status(False, f"Error: {e}")
 
