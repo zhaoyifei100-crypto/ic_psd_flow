@@ -390,6 +390,57 @@ The skill uses environment variables for configuration:
 
 ---
 
+## MiniMax Code Plan Configuration
+
+**Important:** MiniMax Code Plan uses Anthropic API compatible endpoint, NOT the standard MiniMax API.
+
+### Adding MiniMax Models to LiteLLM
+
+**1. Add API Key to VPS:**
+```bash
+ssh -i ~/.ssh/ecs_key -p 2222 root@8.216.45.80
+echo 'MINIMAX_API_KEY=your-code-plan-key' >> /opt/litellm/.env
+```
+
+**2. Add model to config.yaml:**
+```yaml
+# ===== MiniMax Code Plan =====
+- model_name: minimax-m2.5
+  litellm_params:
+    model: anthropic/MiniMax-M2.5
+    api_key: os.environ/MINIMAX_API_KEY
+    api_base: https://api.minimaxi.com/anthropic
+  model_info:
+    mode: chat
+    input_cost_per_token: 0.000001
+    output_cost_per_token: 0.000003
+```
+
+**3. Restart LiteLLM:**
+```bash
+cd /opt/litellm && docker-compose restart litellm
+```
+
+### Key Configuration Details
+
+| Setting | Value |
+|---------|-------|
+| API Base URL | `https://api.minimaxi.com/anthropic` |
+| Model Prefix | `anthropic/` |
+| API Key Format | `sk-cp-xxx` (Code Plan) |
+| Available Models | MiniMax-M2, MiniMax-M2.1, MiniMax-M2.5 |
+
+### Testing MiniMax API Directly
+
+```bash
+curl -s -X POST "https://api.minimaxi.com/anthropic/v1/messages" \
+  -H "Authorization: Bearer YOUR_MINIMAX_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "MiniMax-M2.5", "max_tokens": 10, "messages": [{"role": "user", "content": "Hi"}]}'
+```
+
+---
+
 ## Troubleshooting
 
 ### SSH Connection Issues
