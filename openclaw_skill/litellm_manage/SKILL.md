@@ -27,6 +27,10 @@ python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py --help
 
 # Check status
 python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py status
+
+# Generate opencode config (for using with opencode CLI)
+python3 openclaw_skill/litellm_manage/scripts/scan_models.py \
+  -u https://www.gsaisg.top/v1 -k sk-xxxx
 ```
 
 ---
@@ -171,7 +175,113 @@ python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py config openai \
 
 ---
 
-### 7. Service Control
+### 7. Opencode Config Generator (scan_models.py)
+
+扫描 LiteLLM 可用模型并生成 opencode 配置文件。
+
+**功能特点：**
+- 自动扫描 `/v1/models` 接口获取所有可用模型
+- 根据模型 ID 智能推断参数（context window、output limit、capabilities）
+- 支持 GPT、Claude、Llama、Gemini、Qwen、DeepSeek 等主流模型
+- 自动过滤 embedding、dall-e、tts、whisper 等非聊天模型
+
+**使用方法：**
+
+```bash
+# 基础用法 - 输出到 stdout
+python3 openclaw_skill/litellm_manage/scripts/scan_models.py \
+  -u https://www.gsaisg.top/v1 \
+  -k sk-litellm-admin-key-change-me
+
+# 保存到文件
+python3 openclaw_skill/litellm_manage/scripts/scan_models.py \
+  -u https://www.gsaisg.top/v1 \
+  -k sk-litellm-admin-key-change-me \
+  -o ~/opencode_config.json
+
+# 生成压缩格式的 JSON
+python3 openclaw_skill/litellm_manage/scripts/scan_models.py \
+  -u https://www.gsaisg.top/v1 \
+  -k sk-litellm-admin-key-change-me \
+  --compact
+
+# 使用生成的 key（推荐）
+python3 openclaw_skill/litellm_manage/scripts/scan_models.py \
+  -u https://www.gsaisg.top/v1 \
+  -k sk-xxxx \
+  -o ~/.config/opencode/opencode.json
+```
+
+**参数说明：**
+
+| 参数 | 说明 | 示例 |
+|------|------|------|
+| `-u, --url` | API Base URL | `https://www.gsaisg.top/v1` |
+| `-k, --key` | API Key | `sk-xxxx` |
+| `-o, --output` | 输出文件路径 | `~/.config/opencode/opencode.json` |
+| `-p, --pretty` | 格式化 JSON（默认） | - |
+| `-c, --compact` | 压缩 JSON | - |
+
+**当前可用模型（2026-03-10）：**
+
+| 模型 | 参数 | 能力 |
+|------|------|------|
+| qwen3.5-plus | 32K / 8K | tool_call |
+| kimi-k2.5 | 128K / 4K | tool_call |
+| deepseek-v3.2-exp | 64K / 4K | tool_call |
+| glm-5 | 32K / 4K | tool_call |
+| claude-haiku-4.5 | 100K / 4K | tool_call |
+| gpt-3.5-turbo | 4K / 4K | tool_call |
+| gemini-3.1-pro | 32K / 4K | tool_call |
+| gemini-3-flash | 32K / 4K | tool_call |
+
+**安全建议：**
+
+如果担心 API key 泄露，生成配置后可手动修改：
+
+```bash
+# 1. 设置环境变量
+export GSAI_API_KEY=your-api-key
+
+# 2. 编辑配置文件，将 apiKey 改为：
+"apiKey": "{env:GSAI_API_KEY}"
+```
+
+**配置示例：**
+
+生成的配置文件格式：
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "gsai": {
+      "name": "GSAI",
+      "npm": "@ai-sdk/openai-compatible",
+      "env": [],
+      "models": {
+        "qwen3-5-plus": {
+          "id": "qwen3.5-plus",
+          "name": "qwen3.5-plus",
+          "tool_call": true,
+          "reasoning": false,
+          "limit": {
+            "context": 32000,
+            "output": 8192
+          }
+        }
+      },
+      "options": {
+        "baseURL": "https://www.gsaisg.top/v1",
+        "apiKey": "sk-xxxx"
+      }
+    }
+  }
+}
+```
+
+---
+
+### 8. Service Control
 
 ```bash
 # Restart LiteLLM
@@ -180,6 +290,15 @@ python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py restart
 # View logs
 python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py logs --lines 100
 ```
+
+---
+
+## Scripts Overview
+
+| 脚本 | 用途 | 位置 |
+|------|------|------|
+| `litellm_manager.py` | LiteLLM 管理 CLI | `scripts/litellm_manager.py` |
+| `scan_models.py` | 扫描模型并生成 opencode 配置 | `scripts/scan_models.py` |
 
 ---
 
@@ -371,6 +490,7 @@ python -m pytest tests/ --cov=scripts --cov-report=html
 | User Management | list, new, info, update, delete | 12 |
 | Team Management | list, new, info, update, add-member, remove-member, delete | 14 |
 | Other Commands | status, test, config, restart, logs | 19 |
+| Config Tools | scan_models (opencode config generator) | - |
 | Integration | argument parsing, routing, error handling | 26 |
 
 ### Key Test Features
