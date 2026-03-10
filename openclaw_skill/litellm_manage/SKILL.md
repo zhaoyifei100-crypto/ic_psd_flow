@@ -32,6 +32,8 @@ python3 openclaw_skill/litellm_manage/scripts/scan_models.py \
   -u https://www.gsaisg.top/v1 -k sk-xxxx
 ```
 
+For detailed email documentation, see **[email.md]**.
+
 ---
 
 ## Commands
