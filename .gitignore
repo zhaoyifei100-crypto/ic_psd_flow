@@ -32,3 +32,8 @@ ic_psd3/tests/specs/*
 ic_psd3/tests/generated/*
 ic_psd3/tests/results/*
 !ic_psd3/tests/specs/usb3_prbs.md
+
+#litellm
+openclaw_skill/litellm_manage/tests/*
+openclaw_skill/litellm_manage/.venv_test/*
+openclaw_skill/litellm_manage/run_tests.py
