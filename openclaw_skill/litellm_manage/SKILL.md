@@ -2,12 +2,11 @@
 name: litellm_manage
 description: LiteLLM Gateway Management - Official API Implementation
 metadata:
-  {
-    "openclaw": {
-      "emoji": "🖥️",
-      "requires": { "env": ["LITELLM_SSH_KEY"] }
-    }
-  }
+  openclaw:
+    emoji: "🖥️"
+    requires:
+      env:
+        - LITELLM_SSH_KEY
 ---
 
 # LiteLLM Management Skill
