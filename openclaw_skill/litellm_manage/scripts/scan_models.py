@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 扫描 OpenAI 兼容 API 的模型列表并生成 opencode 配置文件
-使用方式: python3 scan_models.py --url http://10.0.20.41:18443/v1 --key your-api-key
+使用方式: python3 scan_models.py --url https://www.gsaisg.top/v1 --key your-api-key
 """
 
 import argparse
