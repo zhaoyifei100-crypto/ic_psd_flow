@@ -390,16 +390,6 @@ The skill uses environment variables for configuration:
 
 ---
 
-
-
-### 7. System Operations [TODO]
-
-```bash
-# system load
-现在VPS上有load工具，可以去VPS上看看
-
----
-
 ## Troubleshooting
 
 ### SSH Connection Issues
