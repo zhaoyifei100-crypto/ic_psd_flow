@@ -449,25 +449,13 @@ chmod 600 ~/.ssh/ecs_key_backup
 - Check LiteLLM service status: `python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py status`
 - View logs: `python3 openclaw_skill/litellm_manage/scripts/litellm_manager.py logs --lines 100`
 
+---
+
 ## Testing
 
-The skill includes a comprehensive test suite using pytest.
+For detailed testing documentation, see **[TEST.md](TEST.md)**.
 
-### Test Structure
-
-```
-tests/
-├── conftest.py              # Pytest fixtures and configuration
-├── test_key_management.py   # Key lifecycle tests (10 test cases)
-├── test_user_management.py  # User lifecycle tests (12 test cases)
-├── test_team_management.py  # Team lifecycle tests (14 test cases)
-├── test_other_commands.py   # Status/config/service tests (19 test cases)
-└── test_integration.py      # Integration tests (26 test cases)
-```
-
-**Total: 81 test cases**
-
-### Running Tests
+**Quick test commands:**
 
 ```bash
 cd openclaw_skill/litellm_manage
@@ -475,61 +463,15 @@ cd openclaw_skill/litellm_manage
 # Run all tests
 python -m pytest tests/ -v
 
-# Run specific test file
-python -m pytest tests/test_key_management.py -v
-
 # Run with coverage
 python -m pytest tests/ --cov=scripts --cov-report=html
-```
 
-### Test Coverage
-
-| Module | Commands | Test Cases |
-|--------|----------|------------|
-| Key Management | list, generate, update, suspend, activate, quota-reset, info, delete, regenerate | 10 |
-| User Management | list, new, info, update, delete | 12 |
-| Team Management | list, new, info, update, add-member, remove-member, delete | 14 |
-| Other Commands | status, test, config, restart, logs | 19 |
-| Config Tools | scan_models (opencode config generator) | - |
-| Integration | argument parsing, routing, error handling | 26 |
-
-### Key Test Features
-
-- **Mock-based testing**: All API calls and SSH commands are mocked
-- **Fast execution**: Tests run in seconds without network access
-- **Comprehensive coverage**: Tests success, failure, and edge cases
-- **Fixtures**: Shared test data and mock objects in `conftest.py`
-
-### Live Integration Testing
-
-To run tests against the actual LiteLLM server:
-
-```bash
+# Run live integration test
 export LITELLM_SSH_KEY=~/.ssh/ecs_key_backup
-
-# Test all basic operations
-python3 openclaw_skill/litellm_manage/tests/integration_test_live.py
+python3 tests/integration_test_live.py
 ```
 
-**Verified Operations (2026-03-10):**
-
-| Command | Status | Notes |
-|---------|--------|-------|
-| `status` | ✅ Working | Shows 8 healthy models |
-| `key list` | ✅ Working | Lists all keys |
-| `key generate` | ✅ Working | Creates keys with budget/models |
-| `key info` | ✅ Working | Fixed: now uses `/key/info` API |
-| `key update` | ✅ Working | Updates budget, models, etc. |
-| `key suspend` | ✅ Working | Sets budget to 0 |
-| `key activate` | ✅ Working | Restores budget |
-| `key delete` | ✅ Working | Deletes keys |
-| `user list` | ✅ Working | Shows all users |
-| `user new` | ✅ Working | Creates users with budget |
-| `team list` | ✅ Working | Shows all teams |
-| `team new` | ✅ Working | Creates teams with budget |
-
-**Known Issues Fixed:**
-- `key info` was failing because `/key/list` returns key hashes, not full objects. Fixed by adding `_find_key_by_input()` helper function that uses `/key/info` endpoint.
+**Test Summary:** 81 test cases covering all commands (Key, User, Team, Config, Service).
 
 ---
 
