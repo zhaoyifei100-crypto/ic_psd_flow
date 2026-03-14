@@ -390,7 +390,105 @@ The skill uses environment variables for configuration:
 
 ---
 
-## Troubleshooting
+## 新建用户完整流程 (New User Workflow)
+
+当需要新建一个 LiteLLM 用户时，按以下步骤执行：
+
+### 步骤 1: 创建用户
+
+```bash
+python3 ~/.openclaw/workspace/skills/litellm_manage/scripts/litellm_manager.py user new \
+  --username <用户名> \
+  --email <邮箱> \
+  --budget <预算>
+```
+
+示例：
+```bash
+python3 ~/.openclaw/workspace/skills/litellm_manage/scripts/litellm_manager.py user new \
+  --username yfzhao \
+  --email zhaoyifei100@gmail.com \
+  --budget 20
+```
+
+### 步骤 2: 设置预算周期
+
+```bash
+python3 ~/.openclaw/workspace/skills/litellm_manage/scripts/litellm_manager.py budget user <user_id> <预算>
+```
+
+这会自动设置 `budget_duration: 1month`
+
+### 步骤 3: 生成 API Key
+
+```bash
+python3 ~/.openclaw/workspace/skills/litellm_manage/scripts/litellm_manager.py key generate \
+  --alias <用户名> \
+  --budget <预算> \
+  --models <模型列表>
+```
+
+示例：
+```bash
+python3 ~/.openclaw/workspace/skills/litellm_manage/scripts/litellm_manager.py key generate \
+  --alias yfzhao \
+  --budget 20 \
+  --models "glm-5,kimi-k2.5,deepseek-v3.2-exp,claude-haiku-4-5,minimax-m2.5"
+```
+
+### 步骤 4: 生成 opencode 配置文件
+
+```bash
+python3 ~/.openclaw/workspace/skills/litellm_manage/scripts/scan_models.py \
+  -u https://www.gsaisg.top/v1 \
+  -k <API_KEY> \
+  -o /tmp/opencode_config.json
+```
+
+### 步骤 5: 发送通知邮件
+
+使用 gog 发送邮件，包含：
+- API Key
+- 可用模型列表
+- 预算信息
+- opencode 配置文件附件
+
+```bash
+gog gmail send \
+  --to <邮箱> \
+  --subject "[LiteLLM] Your API Key is Ready - <用户名>" \
+  --body "<邮件内容>" \
+  --attach /tmp/opencode_config.json
+```
+
+### 快速命令汇总
+
+```bash
+# 完整流程 (需要手动填参数)
+USER="yfzhao"
+EMAIL="zhaoyifei100@gmail.com"
+BUDGET=20
+MODELS="glm-5,kimi-k2.5,deepseek-v3.2-exp,claude-haiku-4-5,minimax-m2.5"
+
+# 1. 创建用户
+python3 ~/.openclaw/workspace/skills/litellm_manage/scripts/litellm_manager.py user new --username $USER --email $EMAIL --budget $BUDGET
+
+# 2. 设置预算周期
+python3 ~/.openclaw/workspace/skills/litellm_manage/scripts/litellm_manager.py budget user <user_id> $BUDGET
+
+# 3. 生成 Key
+python3 ~/.openclaw/workspace/skills/litellm_manage/scripts/litellm_manager.py key generate --alias $USER --budget $BUDGET --models "$MODELS"
+
+# 4. 生成配置
+python3 ~/.openclaw/workspace/skills/litellm_manage/scripts/scan_models.py -u https://www.gsaisg.top/v1 -k <API_KEY> -o /tmp/opencode_config.json
+
+# 5. 发邮件
+gog gmail send --to $EMAIL --subject "[LiteLLM] Your API Key is Ready - $USER" --body "..." --attach /tmp/opencode_config.json
+```
+
+---
+
+## 故障排查
 
 ### SSH Connection Issues
 
